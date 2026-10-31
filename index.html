@@ -32,6 +32,8 @@
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none;
         }
 
         /* キャンバス背景のドットグリッド */
@@ -39,6 +41,7 @@
             background-color: #f8fafc;
             background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
             background-size: 24px 24px;
+            touch-action: none;
         }
         .dark .bg-dot-grid {
             background-color: #0f172a;
@@ -53,6 +56,8 @@
             cursor: grab;
             max-width: 320px;
             min-width: 110px;
+            touch-action: none;
+            -webkit-touch-callout: none;
         }
         .mind-node:active {
             cursor: grabbing;
@@ -102,86 +107,142 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(148, 163, 184, 0.8);
         }
+
+        /* 横スクロールバー非表示用 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 w-screen h-screen relative overflow-hidden">
 
     <!-- ==================== トップナビゲーションバー ==================== -->
-    <header class="fixed top-3 left-3 right-3 h-14 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg z-30 flex items-center justify-between px-4 transition-all">
+    <header class="fixed top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 h-13 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg z-30 flex items-center justify-between px-2.5 sm:px-4 transition-all">
         <!-- 左側: ロゴ & マップ選択/タイトル -->
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-lg tracking-tight">
-                <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                    <i class="fa-solid fa-diagram-project"></i>
+        <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 max-w-[200px] xs:max-w-[240px] sm:max-w-xs md:max-w-md">
+            <div class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold text-base sm:text-lg tracking-tight shrink-0">
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-diagram-project text-sm sm:text-base"></i>
                 </div>
-                <span class="hidden sm:inline">MindFlow</span>
+                <span class="hidden md:inline">MindFlow</span>
             </div>
 
-            <div class="h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            <div class="h-5 sm:h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
 
             <!-- マップタイトル入力 -->
-            <div class="relative flex items-center">
-                <input id="mapTitleInput" type="text" value="新規マインドマップ" 
-                    class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 rounded-lg px-2.5 py-1 text-sm font-semibold w-36 sm:w-52 transition-all outline-none"
-                    title="マップのタイトルを編集">
+            <input id="mapTitleInput" type="text" value="新規マインドマップ" 
+                class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 rounded-lg px-1.5 sm:px-2.5 py-1 text-xs sm:text-sm font-semibold w-full transition-all outline-none truncate"
+                title="マップのタイトルを編集">
+        </div>
+
+        <!-- 中央: Undo / Redo (タブレット・スマホ含め常時アクセス可能) -->
+        <div class="flex items-center gap-0.5 sm:gap-1 bg-slate-100 dark:bg-slate-700/60 p-0.5 sm:p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50 mx-1 shrink-0">
+            <button id="undoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1" title="元に戻す (Ctrl+Z)">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span class="hidden xl:inline text-[11px]">戻す</span>
+            </button>
+            <button id="redoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1" title="やり直す (Ctrl+Y)">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span class="hidden xl:inline text-[11px]">進む</span>
+            </button>
+        </div>
+
+        <!-- 右側: PC向けフルメニュー & モバイル向けコンパクトメニュー -->
+        <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <!-- PC向け: 自動整列コントロール -->
+            <div class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50">
+                <button id="autoLayoutToggleBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm" title="自動整列モードと自由配置モードの切り替え">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span id="layoutModeText">自動: ON</span>
+                </button>
+                <button id="reLayoutBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-1" title="今すぐ綺麗に自動整列する">
+                    <i class="fa-solid fa-align-left"></i>
+                    <span>整列</span>
+                </button>
+                <select id="layoutDirSelect" class="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 px-1.5 py-1 rounded-lg outline-none cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition" title="自動配置の展開方向">
+                    <option value="both" class="dark:bg-slate-800">左右展開</option>
+                    <option value="right" class="dark:bg-slate-800">右展開</option>
+                </select>
             </div>
 
-            <!-- 保存済みマップ一覧ドロップダウン -->
-            <button id="openMapListBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-sm flex items-center gap-1.5 transition" title="保存済みマップ一覧 (IndexedDB)">
+            <!-- PC/タブレット横向き: マップ一覧 -->
+            <button id="openMapListBtn" class="hidden md:flex p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-medium items-center gap-1.5 transition" title="保存済みマップ一覧 (IndexedDB)">
                 <i class="fa-solid fa-folder-open text-amber-500"></i>
-                <span class="hidden md:inline text-xs font-medium">マップ管理</span>
+                <span class="hidden lg:inline">マップ管理</span>
             </button>
-        </div>
 
-        <!-- 中央: レイアウト・Undo/Redoコントロール -->
-        <div class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50">
-            <button id="undoBtn" class="p-1.5 px-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-40 transition text-xs flex items-center gap-1" title="元に戻す (Ctrl+Z)">
-                <i class="fa-solid fa-rotate-left"></i>
-            </button>
-            <button id="redoBtn" class="p-1.5 px-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-40 transition text-xs flex items-center gap-1" title="やり直す (Ctrl+Y)">
-                <i class="fa-solid fa-rotate-right"></i>
-            </button>
-            <div class="h-4 w-[1px] bg-slate-300 dark:bg-slate-600 mx-1"></div>
-            <button id="autoLayoutToggleBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm" title="自動整列モードと自由配置モードの切り替え">
-                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                <span id="layoutModeText">自動配置: ON</span>
-            </button>
-            <button id="reLayoutBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-1" title="今すぐ綺麗に自動整列する">
-                <i class="fa-solid fa-align-left"></i>
-                <span>整列</span>
-            </button>
-            <select id="layoutDirSelect" class="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition" title="自動配置の展開方向">
-                <option value="both" class="dark:bg-slate-800">左右展開</option>
-                <option value="right" class="dark:bg-slate-800">右方向のみ</option>
-            </select>
-        </div>
-
-        <!-- 右側: 共有 & 入出力 & テーマ -->
-        <div class="flex items-center gap-1.5 sm:gap-2">
-            <span id="saveStatus" class="hidden xl:inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full font-medium">
-                <i class="fa-solid fa-cloud-check"></i> 保存済
-            </span>
-
-            <button id="openIoModalBtn" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Markdown / JSON のインポートとエクスポート">
+            <!-- PC/タブレット横向き: 入出力 -->
+            <button id="openIoModalBtn" class="hidden md:flex px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold items-center gap-1.5 transition" title="Markdown / JSON のインポートとエクスポート">
                 <i class="fa-solid fa-file-import"></i>
-                <span class="hidden sm:inline">入出力 (MD/JSON)</span>
+                <span class="hidden lg:inline">入出力</span>
             </button>
 
-            <button id="shareUrlBtn" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition" title="URLでマップやMarkdownを共有">
+            <!-- PC/タブレット横向き: URL共有 -->
+            <button id="shareUrlBtn" class="hidden md:flex px-2.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold items-center gap-1.5 shadow-md shadow-blue-500/20 transition" title="URLでマップやMarkdownを共有">
                 <i class="fa-solid fa-share-nodes"></i>
-                <span class="hidden sm:inline">URL共有</span>
+                <span class="hidden lg:inline">URL共有</span>
             </button>
 
-            <button id="themeToggleBtn" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ダークモード切替">
+            <!-- PC/タブレット: ダークモード切替 -->
+            <button id="themeToggleBtn" class="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ダークモード切替">
                 <i class="fa-solid fa-moon dark:hidden"></i>
                 <i class="fa-solid fa-sun hidden dark:inline text-amber-400"></i>
             </button>
 
-            <button id="helpBtn" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ショートカットと使い方">
+            <!-- PC: ヘルプ -->
+            <button id="helpBtn" class="hidden md:flex w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ショートカットと使い方">
                 <i class="fa-solid fa-question"></i>
+            </button>
+
+            <!-- モバイル/タブレット縦向き用: 整列ボタン -->
+            <button id="mobileReLayoutBtn" class="lg:hidden w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="自動整列を実行">
+                <i class="fa-solid fa-align-left text-xs"></i>
+            </button>
+
+            <!-- モバイル/タブレット縦向き用: ハンバーガーメニュー開閉ボタン -->
+            <button id="mobileMenuToggleBtn" class="md:hidden w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20 transition" title="メニュー">
+                <i class="fa-solid fa-bars text-xs"></i>
             </button>
         </div>
     </header>
+
+    <!-- ==================== モバイル・タブレット縦向き用 ドロップダウンメニュー ==================== -->
+    <div id="mobileMenuDropdown" class="fixed top-16 right-3 z-40 hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2.5 w-60 flex-col gap-1 transition-all">
+        <button id="mobileOpenMapListBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-solid fa-folder-open text-amber-500 w-4 text-center"></i>
+            <span>マップ管理 (IndexedDB)</span>
+        </button>
+        <button id="mobileOpenIoModalBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-solid fa-file-import text-blue-500 w-4 text-center"></i>
+            <span>入出力 (Markdown / JSON)</span>
+        </button>
+        <button id="mobileShareUrlBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-solid fa-share-nodes text-indigo-500 w-4 text-center"></i>
+            <span>URLでマップ共有</span>
+        </button>
+        <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+        <button id="mobileAutoLayoutToggleBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center justify-between text-slate-700 dark:text-slate-200 transition">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-wand-magic-sparkles text-emerald-500 w-4 text-center"></i>
+                <span id="mobileLayoutModeText">自動配置: ON</span>
+            </div>
+            <span class="text-[10px] text-slate-400">切替</span>
+        </button>
+        <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+        <button id="mobileThemeToggleBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-solid fa-moon dark:hidden text-slate-600 w-4 text-center"></i>
+            <i class="fa-solid fa-sun hidden dark:inline text-amber-400 w-4 text-center"></i>
+            <span>テーマ切替 (ダーク/ライト)</span>
+        </button>
+        <button id="mobileHelpBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-solid fa-circle-question text-cyan-500 w-4 text-center"></i>
+            <span>使い方・ヘルプ</span>
+        </button>
+    </div>
 
     <!-- ==================== 関連付け線作成モードバナー ==================== -->
     <div id="assocModeBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-30 hidden bg-purple-600 text-white px-5 py-2.5 rounded-full shadow-xl flex items-center gap-3 text-sm font-medium animate-bounce">
@@ -228,14 +289,20 @@
         </div>
 
         <!-- メイン操作ドック -->
-        <div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl shadow-xl flex items-center gap-1 sm:gap-1.5 overflow-x-auto max-w-full">
-            <button id="addChildBtn" class="px-3 py-2 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子ノードを追加 (Tab)">
+        <div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl shadow-xl flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar max-w-full">
+            <!-- ✏️ テキスト編集ボタン (キーボードレス操作の要) -->
+            <button id="editNodeTextBtn" class="px-2.5 sm:px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-semibold flex items-center gap-1.5 shrink-0 transition" title="選択ノードのテキストを編集">
+                <i class="fa-solid fa-pen-to-square text-blue-600 dark:text-blue-400"></i>
+                <span>編集</span>
+            </button>
+
+            <button id="addChildBtn" class="px-2.5 sm:px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子ノードを追加 (Tab)">
                 <i class="fa-solid fa-sitemap text-blue-500"></i>
                 <span>子追加</span>
                 <kbd class="hidden sm:inline-block text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">Tab</kbd>
             </button>
 
-            <button id="addSiblingBtn" class="px-3 py-2 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="兄弟ノードを追加 (Enter)">
+            <button id="addSiblingBtn" class="px-2.5 sm:px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="兄弟ノードを追加 (Enter)">
                 <i class="fa-solid fa-plus text-indigo-500"></i>
                 <span>兄弟追加</span>
                 <kbd class="hidden sm:inline-block text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">Enter</kbd>
@@ -243,36 +310,36 @@
 
             <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
 
-            <button id="toggleCheckboxBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="チェックボックスのON/OFF">
+            <button id="toggleCheckboxBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="チェックボックスのON/OFF">
                 <i class="fa-regular fa-square-check text-emerald-500 text-sm"></i>
-                <span class="hidden md:inline">チェック</span>
+                <span class="hidden sm:inline">チェック</span>
             </button>
 
-            <button id="toggleColorBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードの色を変更">
+            <button id="toggleColorBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードの色を変更">
                 <i class="fa-solid fa-palette text-pink-500 text-sm"></i>
-                <span class="hidden md:inline">色変更</span>
+                <span class="hidden sm:inline">色</span>
             </button>
 
-            <button id="startAssocBtn" class="px-2.5 py-2 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="別ノードへ関連付けの線（破線矢印）を引く">
+            <button id="startAssocBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="別ノードへ関連付けの線（破線矢印）を引く">
                 <i class="fa-solid fa-bezier-curve text-purple-500 text-sm"></i>
-                <span class="hidden md:inline">関連線</span>
+                <span class="hidden sm:inline">関連線</span>
             </button>
 
-            <button id="toggleCollapseBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子孫ノードを折りたたむ / 展開 (Space)">
+            <button id="toggleCollapseBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子孫ノードを折りたたむ / 展開 (Space)">
                 <i class="fa-solid fa-compress text-amber-500 text-sm"></i>
-                <span class="hidden md:inline">折りたたみ</span>
+                <span class="hidden sm:inline">開閉</span>
             </button>
 
-            <button id="editNoteBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードに詳細メモを追加">
+            <button id="editNoteBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードに詳細メモを追加">
                 <i class="fa-regular fa-note-sticky text-cyan-500 text-sm"></i>
-                <span class="hidden md:inline">メモ</span>
+                <span class="hidden sm:inline">メモ</span>
             </button>
 
             <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
 
-            <button id="deleteNodeBtn" class="px-2.5 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-1 shrink-0 transition" title="選択中のノードまたは関連線を削除 (Delete)">
+            <button id="deleteNodeBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-1 shrink-0 transition" title="選択中のノードまたは関連線を削除 (Delete)">
                 <i class="fa-regular fa-trash-can text-sm"></i>
-                <span class="hidden md:inline">削除</span>
+                <span class="hidden sm:inline">削除</span>
             </button>
         </div>
     </div>
@@ -482,28 +549,39 @@
                 <div class="grid grid-cols-2 gap-2.5">
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
                         <span>子ノード追加</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Tab</kbd>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Tab / 下部バー</kbd>
                     </div>
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
                         <span>兄弟ノード追加</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Enter</kbd>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Enter / 下部バー</kbd>
                     </div>
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
                         <span>テキスト編集</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">ダブルクリック / F2</kbd>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">編集ボタン / ダブルタップ</kbd>
                     </div>
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
                         <span>折りたたみ切替</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Space</kbd>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Space / 開閉ボタン</kbd>
                     </div>
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
-                        <span>ノード・関連線削除</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Del / BackSpace</kbd>
+                        <span>削除</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Del / 削除ボタン</kbd>
                     </div>
                     <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
-                        <span>元に戻す / やり直し</span>
-                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Ctrl+Z / Y</kbd>
+                        <span>元に戻す / 進む</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">上部 戻す・進むボタン</kbd>
                     </div>
+                </div>
+                <div class="p-3 bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl space-y-1">
+                    <div class="font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-tablet-screen-button"></i>
+                        <span>iPad・タブレット・スマートフォンでの操作</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300">
+                        <li><strong>アイテム移動：</strong> ノードを1本指でドラッグすると自由に配置できます。</li>
+                        <li><strong>キャンバス操作：</strong> 背景を1本指でスワイプして移動、2本指でピンチイン/アウトして拡大・縮小できます。</li>
+                        <li><strong>文字編集：</strong> ノードを選択して下部の「編集」ボタンを押すか、ノードをダブルタップしてください。</li>
+                    </ul>
                 </div>
                 <ul class="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-300">
                     <li><strong>手動配置と自動配置：</strong> ノードをドラッグして動かすと自動的に「手動配置モード」に切り替わります。上部の「整列」ボタンを押すといつでも綺麗に再整列できます。</li>
@@ -891,14 +969,53 @@
             mapTitleInput.value = mapData.title || '無題のマインドマップ';
             const autoBtn = document.getElementById('autoLayoutToggleBtn');
             const layoutText = document.getElementById('layoutModeText');
+            const mobileLayoutText = document.getElementById('mobileLayoutModeText');
+
             if (mapData.autoLayout) {
-                layoutText.textContent = '自動配置: ON';
-                autoBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm';
+                if (layoutText) layoutText.textContent = '自動: ON';
+                if (mobileLayoutText) mobileLayoutText.textContent = '自動配置: ON';
+                if (autoBtn) autoBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm';
             } else {
-                layoutText.textContent = '手動配置モード';
-                autoBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-800';
+                if (layoutText) layoutText.textContent = '手動配置';
+                if (mobileLayoutText) mobileLayoutText.textContent = '手動配置モード';
+                if (autoBtn) autoBtn.className = 'px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-800';
             }
             document.getElementById('layoutDirSelect').value = mapData.layoutDir || 'both';
+        }
+
+        // DOM再生成を行わずに選択状態のCSSクラスのみ更新（タッチ/ドラッグの中断を防止）
+        function updateSelectedNodeVisual() {
+            nodesContainer.querySelectorAll('.mind-node').forEach(elem => {
+                const id = elem.dataset.nodeId;
+                if (id === selectedNodeId) {
+                    elem.classList.add('selected');
+                } else {
+                    elem.classList.remove('selected');
+                }
+                if (id === assocCreationSourceId) {
+                    elem.classList.add('assoc-source');
+                } else {
+                    elem.classList.remove('assoc-source');
+                }
+            });
+        }
+
+        // ノードの編集開始（オンスクリーンキーボード表示を配慮して中央上寄りにフォーカス）
+        function startNodeEdit(node) {
+            if (!node) return;
+            selectedNodeId = node.id;
+            editingNodeId = node.id;
+            renderAll();
+            focusNodeInView(node);
+        }
+
+        function focusNodeInView(node) {
+            // タブレットやスマホのソフトウェアキーボードで隠れないよう、画面高35%付近へスクロール
+            const targetX = window.innerWidth / 2 - node.x * viewState.scale;
+            const targetY = (window.innerHeight * 0.35) - node.y * viewState.scale;
+            viewState.x = targetX;
+            viewState.y = targetY;
+            updateViewportTransform();
         }
 
         function renderAll() {
@@ -1178,9 +1295,11 @@
             let startClientX = 0;
             let startClientY = 0;
             let moved = false;
+            let lastTapTime = 0;
 
             el.addEventListener('pointerdown', (e) => {
-                if (e.button !== 0) return;
+                // マウス操作時の左クリック以外は除外（タッチ端末はpointerType='touch'でbutton=0）
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation();
 
                 // 関連線作成モード中の場合
@@ -1194,7 +1313,7 @@
                             toId: node.id,
                             label: '関連'
                         });
-                        showToast('関連付けの線を作成しました（ダブルクリックでラベル編集）');
+                        showToast('関連付けの線を作成しました（ダブルタップでラベル編集）');
                         saveMapToStorage();
                     }
                     exitAssocCreationMode();
@@ -1210,9 +1329,13 @@
                 startClientX = e.clientX;
                 startClientY = e.clientY;
 
-                el.setPointerCapture(e.pointerId);
-                renderNodes(); // 選択枠更新
+                // 重要: DOM要素を再生成(innerHTMLクリア)せず、CSSクラスのみ変更することでポインターキャプチャの喪失・ドラッグ中断を防止
+                updateSelectedNodeVisual();
                 renderConnections();
+
+                try {
+                    el.setPointerCapture(e.pointerId);
+                } catch (_) {}
             });
 
             el.addEventListener('pointermove', (e) => {
@@ -1233,46 +1356,79 @@
                 if (moved) {
                     startClientX = e.clientX;
                     startClientY = e.clientY;
-                    // ルート以外のノード移動時は子孫も一緒に移動すると直感的（Shiftキー押下時は単独移動）
+
+                    // ルート以外のノード移動時は子孫も一緒に移動（Shiftキー押下時は単独移動）
+                    const movedNodes = [];
                     if (node.id !== mapData.root.id && !e.shiftKey) {
                         translateSubtree(node, dx, dy, true);
+                        getAllVisibleNodes(node, movedNodes);
                     } else {
                         node.x += dx;
                         node.y += dy;
+                        movedNodes.push(node);
                     }
                     node.direction = node.x < mapData.root.x ? 'left' : 'right';
-                    renderAll();
+
+                    // 移動対象ノードのDOM要素の座標をリアルタイム更新
+                    movedNodes.forEach(n => {
+                        const targetEl = nodesContainer.querySelector(`[data-node-id="${n.id}"]`);
+                        if (targetEl) {
+                            targetEl.style.left = `${n.x}px`;
+                            targetEl.style.top = `${n.y}px`;
+                        }
+                    });
+
+                    renderConnections();
                 }
             });
 
-            el.addEventListener('pointerup', (e) => {
+            const handlePointerEnd = (e) => {
                 if (!isDraggingNode) return;
                 isDraggingNode = false;
-                el.releasePointerCapture(e.pointerId);
+                try {
+                    if (el.hasPointerCapture(e.pointerId)) {
+                        el.releasePointerCapture(e.pointerId);
+                    }
+                } catch (_) {}
+
                 if (moved) {
+                    renderAll();
                     saveMapToStorage();
+                } else {
+                    // タップ判定（ダブルタップ判定: 320ms以内の連続タップでインラインテキスト編集）
+                    const now = Date.now();
+                    if (now - lastTapTime < 320) {
+                        startNodeEdit(node);
+                    }
+                    lastTapTime = now;
                 }
-            });
+            };
+
+            el.addEventListener('pointerup', handlePointerEnd);
+            el.addEventListener('pointercancel', handlePointerEnd);
 
             el.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
-                editingNodeId = node.id;
-                renderAll();
+                startNodeEdit(node);
             });
         }
 
-        // キャンバスのパン & ホイールズーム
+        // キャンバスのパン & ホイールズーム（マウス用）
         let isPanning = false;
         let panStartX = 0;
         let panStartY = 0;
 
         canvasViewport.addEventListener('pointerdown', (e) => {
+            // ノード外のキャンバス・背景をクリックした場合のみパン開始
             if (e.target !== canvasViewport && e.target !== canvasTransform && e.target.tagName !== 'svg') return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+
             isPanning = true;
             panStartX = e.clientX - viewState.x;
             panStartY = e.clientY - viewState.y;
             selectedAssocId = null;
             document.getElementById('colorPalettePanel').classList.add('hidden');
+            document.getElementById('mobileMenuDropdown').classList.add('hidden');
             renderAll();
         });
 
@@ -1283,9 +1439,107 @@
             updateViewportTransform();
         });
 
-        window.addEventListener('pointerup', () => {
+        const handleCanvasPointerEnd = () => {
             isPanning = false;
-        });
+        };
+        window.addEventListener('pointerup', handleCanvasPointerEnd);
+        window.addEventListener('pointercancel', handleCanvasPointerEnd);
+
+        // マウスホイールズーム
+        canvasViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = Math.min(2.5, Math.max(0.2, viewState.scale * zoomFactor));
+
+            // マウス位置を中心にズーム
+            const rect = canvasViewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            viewState.x = mouseX - (mouseX - viewState.x) * (newScale / viewState.scale);
+            viewState.y = mouseY - (mouseY - viewState.y) * (newScale / viewState.scale);
+            viewState.scale = newScale;
+            updateViewportTransform();
+        }, { passive: false });
+
+        // ============================================================================
+        // 6.2 タブレット・スマホ向けマルチタッチ（2本指ピンチズーム＆パン、1本指パン）
+        // ============================================================================
+        let touchStartDist = 0;
+        let touchStartScale = 1;
+        let touchStartMidX = 0;
+        let touchStartMidY = 0;
+        let touchStartViewX = 0;
+        let touchStartViewY = 0;
+        let isTouchZooming = false;
+        let isTouchPanning = false;
+
+        canvasViewport.addEventListener('touchstart', (e) => {
+            // ノード上のタッチはノード固有のPointerイベントに任せる
+            if (e.target.closest('.mind-node')) return;
+
+            if (e.touches.length === 2) {
+                isTouchZooming = true;
+                isTouchPanning = false;
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                touchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1;
+                touchStartScale = viewState.scale;
+                touchStartMidX = (t1.clientX + t2.clientX) / 2;
+                touchStartMidY = (t1.clientY + t2.clientY) / 2;
+                touchStartViewX = viewState.x;
+                touchStartViewY = viewState.y;
+            } else if (e.touches.length === 1) {
+                isTouchPanning = true;
+                isTouchZooming = false;
+                touchStartMidX = e.touches[0].clientX;
+                touchStartMidY = e.touches[0].clientY;
+                touchStartViewX = viewState.x;
+                touchStartViewY = viewState.y;
+                selectedAssocId = null;
+                document.getElementById('colorPalettePanel').classList.add('hidden');
+                document.getElementById('mobileMenuDropdown').classList.add('hidden');
+            }
+        }, { passive: false });
+
+        canvasViewport.addEventListener('touchmove', (e) => {
+            if (e.target.closest('.mind-node')) return;
+
+            if (isTouchZooming && e.touches.length === 2) {
+                e.preventDefault();
+                const t1 = e.touches[0];
+                const t2 = e.touches[1];
+                const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY) || 1;
+                const scaleRatio = currentDist / touchStartDist;
+                const newScale = Math.min(2.5, Math.max(0.2, touchStartScale * scaleRatio));
+
+                const currentMidX = (t1.clientX + t2.clientX) / 2;
+                const currentMidY = (t1.clientY + t2.clientY) / 2;
+
+                const rect = canvasViewport.getBoundingClientRect();
+                const originX = touchStartMidX - rect.left;
+                const originY = touchStartMidY - rect.top;
+
+                viewState.scale = newScale;
+                viewState.x = originX - (originX - touchStartViewX) * (newScale / touchStartScale) + (currentMidX - touchStartMidX);
+                viewState.y = originY - (originY - touchStartViewY) * (newScale / touchStartScale) + (currentMidY - touchStartMidY);
+                updateViewportTransform();
+            } else if (isTouchPanning && e.touches.length === 1) {
+                e.preventDefault();
+                const dx = e.touches[0].clientX - touchStartMidX;
+                const dy = e.touches[0].clientY - touchStartMidY;
+                viewState.x = touchStartViewX + dx;
+                viewState.y = touchStartViewY + dy;
+                updateViewportTransform();
+            }
+        }, { passive: false });
+
+        const endTouch = () => {
+            isTouchZooming = false;
+            isTouchPanning = false;
+        };
+        canvasViewport.addEventListener('touchend', endTouch);
+        canvasViewport.addEventListener('touchcancel', endTouch);
 
         canvasViewport.addEventListener('wheel', (e) => {
             e.preventDefault();
@@ -1699,6 +1953,8 @@
                 el.classList.add('hidden');
                 el.classList.remove('flex');
             });
+            const mobileMenu = document.getElementById('mobileMenuDropdown');
+            if (mobileMenu) mobileMenu.classList.add('hidden');
         }
 
         document.querySelectorAll('.close-modal-btn').forEach(btn => {
@@ -1706,6 +1962,18 @@
         });
 
         // 各種ボタンのイベントバインド
+        // ✏️ キーボードレス用 テキスト編集ボタン
+        document.getElementById('editNodeTextBtn').addEventListener('click', () => {
+            if (!selectedNodeId) {
+                showToast('編集するノードを選択してください', 'warn');
+                return;
+            }
+            const found = findNodeAndParent(selectedNodeId);
+            if (found) {
+                startNodeEdit(found.node);
+            }
+        });
+
         document.getElementById('addChildBtn').addEventListener('click', addChildNode);
         document.getElementById('addSiblingBtn').addEventListener('click', addSiblingNode);
         document.getElementById('deleteNodeBtn').addEventListener('click', deleteSelected);
@@ -1714,6 +1982,53 @@
         document.getElementById('editNoteBtn').addEventListener('click', openNoteModal);
         document.getElementById('startAssocBtn').addEventListener('click', startAssocCreationMode);
         document.getElementById('cancelAssocBtn').addEventListener('click', exitAssocCreationMode);
+
+        // モバイル・タブレット縦向き用メニュー制御
+        const mobileMenuDropdown = document.getElementById('mobileMenuDropdown');
+        document.getElementById('mobileMenuToggleBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            mobileMenuDropdown.classList.toggle('hidden');
+            mobileMenuDropdown.classList.toggle('flex');
+        });
+
+        document.getElementById('mobileReLayoutBtn').addEventListener('click', () => {
+            document.getElementById('reLayoutBtn').click();
+        });
+
+        document.getElementById('mobileOpenMapListBtn').addEventListener('click', () => {
+            mobileMenuDropdown.classList.add('hidden');
+            document.getElementById('openMapListBtn').click();
+        });
+
+        document.getElementById('mobileOpenIoModalBtn').addEventListener('click', () => {
+            mobileMenuDropdown.classList.add('hidden');
+            document.getElementById('openIoModalBtn').click();
+        });
+
+        document.getElementById('mobileShareUrlBtn').addEventListener('click', () => {
+            mobileMenuDropdown.classList.add('hidden');
+            document.getElementById('shareUrlBtn').click();
+        });
+
+        document.getElementById('mobileAutoLayoutToggleBtn').addEventListener('click', () => {
+            document.getElementById('autoLayoutToggleBtn').click();
+        });
+
+        document.getElementById('mobileThemeToggleBtn').addEventListener('click', () => {
+            document.getElementById('themeToggleBtn').click();
+        });
+
+        document.getElementById('mobileHelpBtn').addEventListener('click', () => {
+            mobileMenuDropdown.classList.add('hidden');
+            document.getElementById('helpBtn').click();
+        });
+
+        // 画面のどこかをタップしたらモバイルメニューを閉じる
+        document.addEventListener('click', (e) => {
+            if (!mobileMenuDropdown.contains(e.target) && e.target.id !== 'mobileMenuToggleBtn' && !e.target.closest('#mobileMenuToggleBtn')) {
+                mobileMenuDropdown.classList.add('hidden');
+            }
+        });
 
         // カラーパレット切替
         document.getElementById('toggleColorBtn').addEventListener('click', () => {
