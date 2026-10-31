@@ -13,9 +13,16 @@
 - [x] 8. キーボードなし操作の強化（テキスト編集ボタン新設、ワンタップ全機能アクセス、オンスクリーンキーボード配慮）
 - [x] 9. index.html と mindflow_studio.html の完全同期、総合検証とリモート反映
 
-## フェーズ3: iPad mini縦向きUI最適化・画像エクスポート・絵文字機能
+## フェーズ3: iPad mini縦向きUI最適化・画像エクスポート・絵文字機能（完了）
 - [x] 10. 設計書の作成とToDo更新・リモート格納
 - [x] 11. iPad mini縦向きメニュー最適化（「マップ管理」の2行化、whitespace-nowrap、ボタン幅調整）
 - [x] 12. ノード絵文字（Emoji）付与システムの実装（直近履歴＋カテゴリ別ピッカーUI、下部バーへの絵文字ボタン追加）
 - [x] 13. 画像形式エクスポート機能の実装（高解像度PNG & ベクターSVG保存）
 - [x] 14. 総合検証、mindflow_studio.html同期、mainブランチへのプッシュ
+
+## フェーズ4: PWA（Progressive Web App）化・端末インストール対応
+- [x] 15. PWA設計書の作成とToDo更新・リモート格納
+- [ ] 16. アプリアイコン（SVG & PNG）と Web App Manifest (`manifest.json`) の作成
+- [ ] 17. Service Worker (`sw.js`) の作成（オフラインキャッシュと自動アップデート検知機構）
+- [ ] 18. HTMLへのPWAメタタグ、Service Worker登録、インストール促進UIの組み込み
+- [ ] 19. 総合動作検証、mindflow_studio.html同期、mainブランチへのプッシュ
