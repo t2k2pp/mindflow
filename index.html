@@ -121,90 +121,102 @@
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 w-screen h-screen relative overflow-hidden">
 
     <!-- ==================== トップナビゲーションバー ==================== -->
-    <header class="fixed top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 h-13 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg z-30 flex items-center justify-between px-2.5 sm:px-4 transition-all">
+    <header class="fixed top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 h-13 sm:h-14 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg z-30 flex items-center justify-between px-2 sm:px-3.5 transition-all">
         <!-- 左側: ロゴ & マップ選択/タイトル -->
-        <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1 max-w-[200px] xs:max-w-[240px] sm:max-w-xs md:max-w-md">
+        <div class="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 max-w-[140px] xs:max-w-[170px] sm:max-w-[210px] md:max-w-[240px] lg:max-w-xs">
             <div class="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold text-base sm:text-lg tracking-tight shrink-0">
                 <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
                     <i class="fa-solid fa-diagram-project text-sm sm:text-base"></i>
                 </div>
-                <span class="hidden md:inline">MindFlow</span>
+                <span class="hidden xl:inline">MindFlow</span>
             </div>
 
             <div class="h-5 sm:h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
 
             <!-- マップタイトル入力 -->
             <input id="mapTitleInput" type="text" value="新規マインドマップ" 
-                class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 rounded-lg px-1.5 sm:px-2.5 py-1 text-xs sm:text-sm font-semibold w-full transition-all outline-none truncate"
+                class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 rounded-lg px-1.5 sm:px-2 py-1 text-xs sm:text-sm font-semibold w-full transition-all outline-none truncate"
                 title="マップのタイトルを編集">
         </div>
 
-        <!-- 中央: Undo / Redo (タブレット・スマホ含め常時アクセス可能) -->
-        <div class="flex items-center gap-0.5 sm:gap-1 bg-slate-100 dark:bg-slate-700/60 p-0.5 sm:p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50 mx-1 shrink-0">
-            <button id="undoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1" title="元に戻す (Ctrl+Z)">
-                <i class="fa-solid fa-rotate-left"></i>
-                <span class="hidden xl:inline text-[11px]">戻す</span>
-            </button>
-            <button id="redoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1" title="やり直す (Ctrl+Y)">
-                <i class="fa-solid fa-rotate-right"></i>
-                <span class="hidden xl:inline text-[11px]">進む</span>
+        <!-- 中央: Undo / Redo & iPad mini向け2行マップ管理 -->
+        <div class="flex items-center gap-1 sm:gap-1.5 mx-1 shrink-0">
+            <!-- Undo / Redo (タブレット・スマホ含め常時アクセス可能) -->
+            <div class="flex items-center gap-0.5 sm:gap-1 bg-slate-100 dark:bg-slate-700/60 p-0.5 sm:p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50 shrink-0">
+                <button id="undoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1 whitespace-nowrap" title="元に戻す (Ctrl+Z)">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden xl:inline text-[11px]">戻す</span>
+                </button>
+                <button id="redoBtn" class="p-1.5 sm:px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-30 transition text-xs flex items-center gap-1 whitespace-nowrap" title="やり直す (Ctrl+Y)">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden xl:inline text-[11px]">進む</span>
+                </button>
+            </div>
+
+            <!-- iPad mini縦向きでも綺麗に収まる2行マップ管理ボタン -->
+            <button id="openMapListBtn" class="hidden md:flex px-2 py-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition items-center gap-1.5 shrink-0 whitespace-nowrap" title="保存済みマップ一覧 (IndexedDB)">
+                <i class="fa-solid fa-folder-open text-amber-500 text-sm shrink-0"></i>
+                <span class="flex flex-col text-[10px] leading-tight font-semibold text-left">
+                    <span>マップ</span>
+                    <span>管理</span>
+                </span>
             </button>
         </div>
 
         <!-- 右側: PC向けフルメニュー & モバイル向けコンパクトメニュー -->
         <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
             <!-- PC向け: 自動整列コントロール -->
-            <div class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50">
-                <button id="autoLayoutToggleBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm" title="自動整列モードと自由配置モードの切り替え">
+            <div class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50 shrink-0">
+                <button id="autoLayoutToggleBtn" class="px-2 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm whitespace-nowrap" title="自動整列モードと自由配置モードの切り替え">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
                     <span id="layoutModeText">自動: ON</span>
                 </button>
-                <button id="reLayoutBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-1" title="今すぐ綺麗に自動整列する">
+                <button id="reLayoutBtn" class="px-2 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-1 whitespace-nowrap" title="今すぐ綺麗に自動整列する">
                     <i class="fa-solid fa-align-left"></i>
                     <span>整列</span>
                 </button>
-                <select id="layoutDirSelect" class="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 px-1.5 py-1 rounded-lg outline-none cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition" title="自動配置の展開方向">
+                <select id="layoutDirSelect" class="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 px-1.5 py-1 rounded-lg outline-none cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition">
                     <option value="both" class="dark:bg-slate-800">左右展開</option>
                     <option value="right" class="dark:bg-slate-800">右展開</option>
                 </select>
             </div>
 
-            <!-- PC/タブレット横向き: マップ一覧 -->
-            <button id="openMapListBtn" class="hidden md:flex p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-medium items-center gap-1.5 transition" title="保存済みマップ一覧 (IndexedDB)">
-                <i class="fa-solid fa-folder-open text-amber-500"></i>
-                <span class="hidden lg:inline">マップ管理</span>
+            <!-- PC/タブレット: 画像エクスポートボタン -->
+            <button id="headerExportImageBtn" class="hidden md:flex px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold items-center gap-1.5 shrink-0 whitespace-nowrap transition" title="マインドマップを画像（PNG/SVG）として保存">
+                <i class="fa-regular fa-image text-emerald-500"></i>
+                <span class="hidden xl:inline">画像保存</span>
             </button>
 
-            <!-- PC/タブレット横向き: 入出力 -->
-            <button id="openIoModalBtn" class="hidden md:flex px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold items-center gap-1.5 transition" title="Markdown / JSON のインポートとエクスポート">
-                <i class="fa-solid fa-file-import"></i>
-                <span class="hidden lg:inline">入出力</span>
+            <!-- PC/タブレット: 入出力 -->
+            <button id="openIoModalBtn" class="hidden md:flex px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold items-center gap-1.5 shrink-0 whitespace-nowrap transition" title="Markdown / JSON のインポートとエクスポート">
+                <i class="fa-solid fa-file-import text-blue-500"></i>
+                <span class="hidden xl:inline">入出力</span>
             </button>
 
-            <!-- PC/タブレット横向き: URL共有 -->
-            <button id="shareUrlBtn" class="hidden md:flex px-2.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold items-center gap-1.5 shadow-md shadow-blue-500/20 transition" title="URLでマップやMarkdownを共有">
+            <!-- PC/タブレット: URL共有 -->
+            <button id="shareUrlBtn" class="hidden md:flex px-2 sm:px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold items-center gap-1.5 shadow-md shadow-blue-500/20 shrink-0 whitespace-nowrap transition" title="URLでマップやMarkdownを共有">
                 <i class="fa-solid fa-share-nodes"></i>
-                <span class="hidden lg:inline">URL共有</span>
+                <span class="hidden xl:inline">共有</span>
             </button>
 
             <!-- PC/タブレット: ダークモード切替 -->
-            <button id="themeToggleBtn" class="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ダークモード切替">
+            <button id="themeToggleBtn" class="hidden sm:flex w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 transition" title="ダークモード切替">
                 <i class="fa-solid fa-moon dark:hidden"></i>
                 <i class="fa-solid fa-sun hidden dark:inline text-amber-400"></i>
             </button>
 
             <!-- PC: ヘルプ -->
-            <button id="helpBtn" class="hidden md:flex w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ショートカットと使い方">
+            <button id="helpBtn" class="hidden md:flex w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 transition" title="操作ヘルプ">
                 <i class="fa-solid fa-question"></i>
             </button>
 
             <!-- モバイル/タブレット縦向き用: 整列ボタン -->
-            <button id="mobileReLayoutBtn" class="lg:hidden w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="自動整列を実行">
+            <button id="mobileReLayoutBtn" class="lg:hidden w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 transition" title="自動整列を実行">
                 <i class="fa-solid fa-align-left text-xs"></i>
             </button>
 
             <!-- モバイル/タブレット縦向き用: ハンバーガーメニュー開閉ボタン -->
-            <button id="mobileMenuToggleBtn" class="md:hidden w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20 transition" title="メニュー">
+            <button id="mobileMenuToggleBtn" class="md:hidden w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0 transition" title="メニュー">
                 <i class="fa-solid fa-bars text-xs"></i>
             </button>
         </div>
@@ -215,6 +227,10 @@
         <button id="mobileOpenMapListBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
             <i class="fa-solid fa-folder-open text-amber-500 w-4 text-center"></i>
             <span>マップ管理 (IndexedDB)</span>
+        </button>
+        <button id="mobileExportImageBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+            <i class="fa-regular fa-image text-emerald-500 w-4 text-center"></i>
+            <span>画像保存 (PNG / SVG)</span>
         </button>
         <button id="mobileOpenIoModalBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
             <i class="fa-solid fa-file-import text-blue-500 w-4 text-center"></i>
@@ -320,6 +336,12 @@
                 <span class="hidden sm:inline">色</span>
             </button>
 
+            <!-- 😀 絵文字付与ボタン -->
+            <button id="openEmojiPickerBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードの先頭に絵文字を設定">
+                <span class="text-sm">😀</span>
+                <span class="hidden sm:inline">絵文字</span>
+            </button>
+
             <button id="startAssocBtn" class="px-2 sm:px-2.5 py-2 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="別ノードへ関連付けの線（破線矢印）を引く">
                 <i class="fa-solid fa-bezier-curve text-purple-500 text-sm"></i>
                 <span class="hidden sm:inline">関連線</span>
@@ -407,6 +429,9 @@
                     </button>
                     <button id="downloadFileBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
                         <i class="fa-solid fa-download"></i> ファイル保存
+                    </button>
+                    <button id="modalOpenImageExportBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 shadow-2xs text-emerald-600 dark:text-emerald-400 transition" title="マインドマップを画像（PNG/SVG）として出力">
+                        <i class="fa-regular fa-image"></i> 画像保存
                     </button>
                 </div>
                 <div class="flex items-center gap-2">
@@ -591,6 +616,107 @@
         </div>
     </div>
 
+    <!-- ==================== モーダル 6: 絵文字ピッカー (カテゴリ＆直近履歴) ==================== -->
+    <div id="emojiPickerModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-sm sm:text-base flex items-center gap-2">
+                    <span class="text-base">😀</span>
+                    <span>ノードの絵文字を選択</span>
+                </h3>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- 直近で選んだ絵文字 (Recent) -->
+            <div class="px-5 pt-3 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                    <span>最近使った絵文字</span>
+                </div>
+                <div id="recentEmojisContainer" class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
+                    <!-- JSで動的レンダリング -->
+                </div>
+            </div>
+
+            <!-- カテゴリ切り替えタブ -->
+            <div class="px-5 pt-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                <button data-cat="idea" class="emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-blue-600 text-white shrink-0 transition">💡 アイデア・タスク</button>
+                <button data-cat="people" class="emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0 transition">👤 表情・人</button>
+                <button data-cat="biz" class="emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0 transition">💼 ビジネス</button>
+                <button data-cat="symbol" class="emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0 transition">🎨 記号・モノ</button>
+            </div>
+
+            <!-- 絵文字グリッド一覧 -->
+            <div class="p-4 flex-1 overflow-y-auto">
+                <div id="emojiGrid" class="grid grid-cols-6 sm:grid-cols-7 gap-2 text-center text-2xl">
+                    <!-- JSでレンダリング -->
+                </div>
+            </div>
+
+            <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <button id="removeEmojiBtn" class="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-ban"></i>
+                    <span>絵文字を外す</span>
+                </button>
+                <button class="close-modal-btn px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-200/60 transition">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== モーダル 7: 画像エクスポート (PNG / SVG) ==================== -->
+    <div id="imageExportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <i class="fa-regular fa-image text-emerald-500"></i>
+                    <span>マインドマップを画像保存</span>
+                </h3>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-600 dark:text-slate-300">
+                    現在表示中のマインドマップ全体を、プレゼンやドキュメントに貼り付けられる画像形式として出力します。
+                </p>
+
+                <!-- 背景色選択 -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-700 dark:text-slate-300">背景設定</label>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <label class="cursor-pointer border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-center has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:bg-blue-950/40">
+                            <input type="radio" name="imgBg" value="white" checked class="hidden">
+                            <span>⚪ 白背景</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-center has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:bg-blue-950/40">
+                            <input type="radio" name="imgBg" value="dark" class="hidden">
+                            <span>⚫ ダーク背景</span>
+                        </label>
+                        <label class="cursor-pointer border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-center has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/50 dark:has-[:checked]:bg-blue-950/40">
+                            <input type="radio" name="imgBg" value="transparent" class="hidden">
+                            <span>🏁 透過背景</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 出力ボタン -->
+                <div class="space-y-2.5 pt-2">
+                    <button id="exportPngBtn" class="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition">
+                        <i class="fa-solid fa-file-arrow-down text-base"></i>
+                        <span>高解像度 PNG 画像として保存</span>
+                    </button>
+                    <button id="exportSvgBtn" class="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-bezier-curve text-purple-500"></i>
+                        <span>ベクター SVG ファイルとして保存</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- トースト通知 -->
     <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -624,6 +750,7 @@
                 root: {
                     id: 'n_root',
                     text: 'Webアプリ公開計画',
+                    emoji: '🚀',
                     color: 'blue',
                     collapsed: false,
                     checkbox: false,
@@ -635,6 +762,7 @@
                         {
                             id: 'n_1',
                             text: 'コア機能',
+                            emoji: '✨',
                             color: 'emerald',
                             collapsed: false,
                             checkbox: false,
@@ -644,14 +772,15 @@
                             y: -90,
                             direction: 'right',
                             children: [
-                                { id: 'n_1_1', text: '自動整列 & 手動ドラッグ配置', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -140, children: [] },
-                                { id: 'n_1_2', text: 'ノード折りたたみ & 色変更', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -90, children: [] },
-                                { id: 'n_1_3', text: '関連付けライン（破線矢印）', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -40, children: [] }
+                                { id: 'n_1_1', text: '自動整列 & 手動ドラッグ配置', emoji: '🪄', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -140, children: [] },
+                                { id: 'n_1_2', text: 'ノード折りたたみ & 色変更', emoji: '🎨', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -90, children: [] },
+                                { id: 'n_1_3', text: '関連付けライン（破線矢印）', emoji: '🎯', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -40, children: [] }
                             ]
                         },
                         {
                             id: 'n_2',
                             text: 'データ連携・共有',
+                            emoji: '🔗',
                             color: 'purple',
                             collapsed: false,
                             checkbox: false,
@@ -661,13 +790,14 @@
                             y: 90,
                             direction: 'right',
                             children: [
-                                { id: 'n_2_1', text: 'Markdown / JSON 入出力', color: 'purple', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: 60, children: [] },
-                                { id: 'n_2_2', text: 'URLハッシュ圧縮共有', color: 'purple', collapsed: false, checkbox: true, checked: false, note: 'URLを送るだけでマップを再現', x: 520, y: 120, children: [] }
+                                { id: 'n_2_1', text: 'Markdown / JSON 入出力', emoji: '📥', color: 'purple', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: 60, children: [] },
+                                { id: 'n_2_2', text: 'URLハッシュ圧縮共有', emoji: '⚡', color: 'purple', collapsed: false, checkbox: true, checked: false, note: 'URLを送るだけでマップを再現', x: 520, y: 120, children: [] }
                             ]
                         },
                         {
                             id: 'n_3',
                             text: 'ストレージ永続化',
+                            emoji: '💾',
                             color: 'amber',
                             collapsed: false,
                             checkbox: false,
@@ -677,13 +807,14 @@
                             y: -40,
                             direction: 'left',
                             children: [
-                                { id: 'n_3_1', text: 'LocalStorage 即時保存', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -70, children: [] },
-                                { id: 'n_3_2', text: 'IndexedDB 複数マップ管理', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -10, children: [] }
+                                { id: 'n_3_1', text: 'LocalStorage 即時保存', emoji: '⚡', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -70, children: [] },
+                                { id: 'n_3_2', text: 'IndexedDB 複数マップ管理', emoji: '📁', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -10, children: [] }
                             ]
                         },
                         {
                             id: 'n_4',
                             text: 'GitHub Pages デプロイ',
+                            emoji: '🌐',
                             color: 'rose',
                             collapsed: false,
                             checkbox: true,
@@ -1064,6 +1195,14 @@
                         saveMapToStorage();
                     });
                     topRow.appendChild(cb);
+                }
+
+                // 絵文字 (先頭アイコン)
+                if (node.emoji) {
+                    const emojiEl = document.createElement('span');
+                    emojiEl.className = 'text-base mr-0.5 inline-block shrink-0 leading-none align-middle select-none';
+                    emojiEl.textContent = node.emoji;
+                    topRow.appendChild(emojiEl);
                 }
 
                 // テキストまたは編集用Input
@@ -1705,13 +1844,14 @@
             const lines = [];
             function walk(node, depth) {
                 const checkPrefix = node.checkbox ? (node.checked ? '[x] ' : '[ ] ') : '';
+                const emojiPrefix = node.emoji ? `${node.emoji} ` : '';
                 if (depth === 0) {
-                    lines.push(`# ${checkPrefix}${node.text}`);
+                    lines.push(`# ${checkPrefix}${emojiPrefix}${node.text}`);
                 } else if (depth === 1) {
-                    lines.push(`\n## ${checkPrefix}${node.text}`);
+                    lines.push(`\n## ${checkPrefix}${emojiPrefix}${node.text}`);
                 } else {
                     const indent = '  '.repeat(depth - 2);
-                    lines.push(`${indent}- ${checkPrefix}${node.text}`);
+                    lines.push(`${indent}- ${checkPrefix}${emojiPrefix}${node.text}`);
                 }
                 if (node.note && node.note.trim()) {
                     const noteIndent = depth >= 2 ? '  '.repeat(depth - 1) : '';
@@ -1770,9 +1910,19 @@
                     content = cbMatch[2].trim();
                 }
 
+                // 先頭絵文字の検出
+                let emoji = undefined;
+                const emojiRegex = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation})\s*(.*)$/u;
+                const emojiMatch = content.match(emojiRegex);
+                if (emojiMatch) {
+                    emoji = emojiMatch[1];
+                    content = emojiMatch[2].trim();
+                }
+
                 const newNode = {
                     id: 'n_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
                     text: content || 'トピック',
+                    emoji: emoji,
                     color: level === 0 ? 'blue' : (level === 1 ? colors[colorIdx++ % colors.length] : 'slate'),
                     collapsed: false,
                     checkbox,
@@ -1948,10 +2098,12 @@
         });
 
         function closeAllModals() {
-            ['ioModal', 'shareModal', 'storageModal', 'noteModal', 'helpModal'].forEach(id => {
+            ['ioModal', 'shareModal', 'storageModal', 'noteModal', 'helpModal', 'emojiPickerModal', 'imageExportModal'].forEach(id => {
                 const el = document.getElementById(id);
-                el.classList.add('hidden');
-                el.classList.remove('flex');
+                if (el) {
+                    el.classList.add('hidden');
+                    el.classList.remove('flex');
+                }
             });
             const mobileMenu = document.getElementById('mobileMenuDropdown');
             if (mobileMenu) mobileMenu.classList.add('hidden');
@@ -1960,6 +2112,351 @@
         document.querySelectorAll('.close-modal-btn').forEach(btn => {
             btn.addEventListener('click', closeAllModals);
         });
+
+        // ============================================================================
+        // 絵文字ピッカーシステム (カテゴリ一覧 ＆ 直近履歴)
+        // ============================================================================
+        const EMOJI_CATEGORIES = {
+            idea: ['💡', '⭐', '🚀', '🎯', '🔥', '⚡', '📌', '🚩', '🏆', '✅', '⏳', '📝', '🔍', '🛠️', '✨', '💎', '🎉', '🌟', '⚠️', '❗', '❓'],
+            people: ['😀', '😊', '🤔', '🤩', '😎', '🥳', '😭', '🤯', '🤝', '👍', '👏', '🙋', '🧑‍💻', '👥', '💪', '🙏', '❤️', '👀', '💬', '👂', '🧠'],
+            biz: ['📊', '📈', '📉', '📁', '📅', '✉️', '📞', '💻', '📱', '🔒', '💰', '🏢', '🌐', '📢', '💼', '💳', '📑', '🧾', '🛒', '📦', '🎯'],
+            symbol: ['🎨', '📐', '✏️', '🏷️', '🔑', '🔔', '⚙️', '☕', '🍀', '🍎', '📚', '🔗', '🛡️', '🎵', '🕹️', '🔮', '🎈', '✈️', '☀️', '🌈', '🌱']
+        };
+        const RECENT_EMOJIS_KEY = 'mindflow_recent_emojis_v1';
+        let currentEmojiCategory = 'idea';
+
+        function getRecentEmojis() {
+            try {
+                const stored = localStorage.getItem(RECENT_EMOJIS_KEY);
+                if (stored) return JSON.parse(stored);
+            } catch (_) {}
+            return ['💡', '⭐', '🚀', '🎯', '🔥', '✅', '📝', '📌'];
+        }
+
+        function saveRecentEmoji(emoji) {
+            let list = getRecentEmojis().filter(e => e !== emoji);
+            list.unshift(emoji);
+            if (list.length > 12) list = list.slice(0, 12);
+            localStorage.setItem(RECENT_EMOJIS_KEY, JSON.stringify(list));
+        }
+
+        function renderEmojiPicker() {
+            // 直近絵文字
+            const recentContainer = document.getElementById('recentEmojisContainer');
+            const recents = getRecentEmojis();
+            recentContainer.innerHTML = '';
+            recents.forEach(em => {
+                const btn = document.createElement('button');
+                btn.className = 'w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-lg transition';
+                btn.textContent = em;
+                btn.addEventListener('click', () => applyEmojiToSelected(em));
+                recentContainer.appendChild(btn);
+            });
+
+            // カテゴリ別一覧
+            const grid = document.getElementById('emojiGrid');
+            grid.innerHTML = '';
+            const list = EMOJI_CATEGORIES[currentEmojiCategory] || EMOJI_CATEGORIES.idea;
+            list.forEach(em => {
+                const btn = document.createElement('button');
+                btn.className = 'w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-2xl transition hover:scale-110';
+                btn.textContent = em;
+                btn.addEventListener('click', () => applyEmojiToSelected(em));
+                grid.appendChild(btn);
+            });
+
+            // カテゴリタブの見た目
+            document.querySelectorAll('.emoji-cat-tab').forEach(tab => {
+                if (tab.dataset.cat === currentEmojiCategory) {
+                    tab.className = 'emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-blue-600 text-white shrink-0 transition shadow-sm';
+                } else {
+                    tab.className = 'emoji-cat-tab px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0 transition hover:bg-slate-200';
+                }
+            });
+        }
+
+        function applyEmojiToSelected(emoji) {
+            if (!selectedNodeId) return;
+            const found = findNodeAndParent(selectedNodeId);
+            if (!found) return;
+
+            pushHistory();
+            if (emoji) {
+                found.node.emoji = emoji;
+                saveRecentEmoji(emoji);
+            } else {
+                delete found.node.emoji;
+            }
+            renderAll();
+            saveMapToStorage();
+            closeAllModals();
+        }
+
+        function openEmojiPicker() {
+            if (!selectedNodeId) {
+                showToast('絵文字を設定するノードを選択してください', 'warn');
+                return;
+            }
+            renderEmojiPicker();
+            const m = document.getElementById('emojiPickerModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        // ============================================================================
+        // 高解像度画像エクスポート (PNG & SVG)
+        // ============================================================================
+        function openImageExportModal() {
+            const m = document.getElementById('imageExportModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        async function exportMapAsPng() {
+            const bgRadio = document.querySelector('input[name="imgBg"]:checked');
+            const bgOption = bgRadio ? bgRadio.value : 'white';
+            const visibleNodes = getAllVisibleNodes();
+            if (visibleNodes.length === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            visibleNodes.forEach(n => {
+                const dim = nodeDimensions.get(n.id) || { w: 140, h: 44 };
+                minX = Math.min(minX, n.x - dim.w / 2);
+                maxX = Math.max(maxX, n.x + dim.w / 2);
+                minY = Math.min(minY, n.y - dim.h / 2);
+                maxY = Math.max(maxY, n.y + dim.h / 2);
+            });
+
+            const padding = 60;
+            const width = (maxX - minX) + padding * 2;
+            const height = (maxY - minY) + padding * 2;
+            const dpr = 2; // 高精細2x
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            if (bgOption === 'white') {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+            } else if (bgOption === 'dark') {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, width, height);
+            }
+
+            const toX = (wx) => wx - minX + padding;
+            const toY = (wy) => wy - minY + padding;
+
+            // 構造線の描画
+            function drawTreeLines(parent) {
+                if (parent.collapsed || !parent.children) return;
+                const pDim = nodeDimensions.get(parent.id) || { w: 120, h: 42 };
+
+                for (const child of parent.children) {
+                    const cDim = nodeDimensions.get(child.id) || { w: 120, h: 42 };
+                    const isLeft = child.x < parent.x;
+
+                    const startX = toX(parent.x + (isLeft ? -pDim.w / 2 : pDim.w / 2));
+                    const startY = toY(parent.y);
+                    const endX = toX(child.x + (isLeft ? cDim.w / 2 : -cDim.w / 2));
+                    const endY = toY(child.y);
+
+                    const ctrlOffset = Math.max(45, Math.abs(endX - startX) * 0.45);
+                    const c1x = startX + (isLeft ? -ctrlOffset : ctrlOffset);
+                    const c2x = endX + (isLeft ? ctrlOffset : -ctrlOffset);
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.bezierCurveTo(c1x, startY, c2x, endY, endX, endY);
+                    const colorCfg = NODE_COLORS[child.color] || NODE_COLORS.slate;
+                    ctx.strokeStyle = colorCfg.stroke;
+                    ctx.lineWidth = parent.id === mapData.root.id ? 3 : 2.2;
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+
+                    drawTreeLines(child);
+                }
+            }
+            drawTreeLines(mapData.root);
+
+            // 関連線の描画
+            const visibleMap = new Map(visibleNodes.map(n => [n.id, n]));
+            (mapData.associations || []).forEach(assoc => {
+                const fromNode = visibleMap.get(assoc.fromId);
+                const toNode = visibleMap.get(assoc.toId);
+                if (!fromNode || !toNode) return;
+
+                const fx = toX(fromNode.x);
+                const fy = toY(fromNode.y);
+                const tx = toX(toNode.x);
+                const ty = toY(toNode.y);
+
+                const dx = tx - fx;
+                const dy = ty - fy;
+                const mx = (fx + tx) / 2;
+                const my = (fy + ty) / 2;
+                const dist = Math.hypot(dx, dy) || 1;
+                const offset = Math.min(90, dist * 0.25);
+                const cx = mx - (dy / dist) * offset;
+                const cy = my + (dx / dist) * offset;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([6, 6]);
+                ctx.moveTo(fx, fy);
+                ctx.quadraticCurveTo(cx, cy, tx, ty);
+                ctx.strokeStyle = '#9333ea';
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+                ctx.restore();
+
+                if (assoc.label) {
+                    const lx = 0.25 * fx + 0.5 * cx + 0.25 * tx;
+                    const ly = 0.25 * fy + 0.5 * cy + 0.25 * ty;
+                    ctx.save();
+                    ctx.font = 'bold 11px sans-serif';
+                    const textMetrics = ctx.measureText(assoc.label);
+                    const badgeW = textMetrics.width + 16;
+                    const badgeH = 22;
+                    ctx.fillStyle = bgOption === 'dark' ? '#3b0764' : '#f3e8ff';
+                    ctx.strokeStyle = '#c084fc';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(lx - badgeW / 2, ly - badgeH / 2, badgeW, badgeH, 11);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = bgOption === 'dark' ? '#f3e8ff' : '#6b21a8';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(assoc.label, lx, ly);
+                    ctx.restore();
+                }
+            });
+
+            // ノードの描画
+            visibleNodes.forEach(node => {
+                const dim = nodeDimensions.get(node.id) || { w: 120, h: 42 };
+                const nx = toX(node.x) - dim.w / 2;
+                const ny = toY(node.y) - dim.h / 2;
+                const isRoot = node.id === mapData.root.id;
+
+                ctx.save();
+                const colorCfg = NODE_COLORS[node.color] || NODE_COLORS.slate;
+                ctx.beginPath();
+                ctx.roundRect(nx, ny, dim.w, dim.h, 16);
+                ctx.fillStyle = bgOption === 'dark' ? '#1e293b' : '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = colorCfg.stroke;
+                ctx.lineWidth = isRoot ? 3 : 2;
+                ctx.stroke();
+
+                let startTextX = nx + 14;
+                const centerY = ny + dim.h / 2;
+
+                if (node.checkbox) {
+                    ctx.beginPath();
+                    ctx.roundRect(startTextX, centerY - 7, 14, 14, 3);
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    if (node.checked) {
+                        ctx.fillStyle = '#2563eb';
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('✓', startTextX + 7, centerY);
+                    }
+                    startTextX += 20;
+                }
+
+                if (node.emoji) {
+                    ctx.font = '15px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(node.emoji, startTextX, centerY);
+                    startTextX += 20;
+                }
+
+                ctx.font = isRoot ? 'bold 15px sans-serif' : '500 13px sans-serif';
+                ctx.fillStyle = bgOption === 'dark' ? '#f8fafc' : '#0f172a';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.text || '無題', startTextX, centerY);
+                ctx.restore();
+            });
+
+            canvas.toBlob((blob) => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${mapData.title || 'mindmap'}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+                closeAllModals();
+                showToast('高解像度PNG画像を保存しました！');
+            }, 'image/png');
+        }
+
+        function exportMapAsSvg() {
+            const bgRadio = document.querySelector('input[name="imgBg"]:checked');
+            const bgOption = bgRadio ? bgRadio.value : 'white';
+            const visibleNodes = getAllVisibleNodes();
+            if (visibleNodes.length === 0) return;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            visibleNodes.forEach(n => {
+                const dim = nodeDimensions.get(n.id) || { w: 140, h: 44 };
+                minX = Math.min(minX, n.x - dim.w / 2);
+                maxX = Math.max(maxX, n.x + dim.w / 2);
+                minY = Math.min(minY, n.y - dim.h / 2);
+                maxY = Math.max(maxY, n.y + dim.h / 2);
+            });
+
+            const padding = 60;
+            const width = (maxX - minX) + padding * 2;
+            const height = (maxY - minY) + padding * 2;
+            const bgFill = bgOption === 'white' ? '#ffffff' : (bgOption === 'dark' ? '#0f172a' : 'transparent');
+
+            const svgLines = [];
+            svgLines.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX - padding} ${minY - padding} ${width} ${height}" width="${width}" height="${height}">`);
+            if (bgFill !== 'transparent') {
+                svgLines.push(`  <rect x="${minX - padding}" y="${minY - padding}" width="${width}" height="${height}" fill="${bgFill}" />`);
+            }
+            svgLines.push(`  <g id="treeLines">${document.getElementById('treeLinksGroup').innerHTML}</g>`);
+            svgLines.push(`  <g id="assocLines">${document.getElementById('assocLinksGroup').innerHTML}</g>`);
+
+            visibleNodes.forEach(node => {
+                const dim = nodeDimensions.get(node.id) || { w: 120, h: 42 };
+                const nx = node.x - dim.w / 2;
+                const ny = node.y - dim.h / 2;
+                const colorCfg = NODE_COLORS[node.color] || NODE_COLORS.slate;
+                const nodeBg = bgOption === 'dark' ? '#1e293b' : '#ffffff';
+                const nodeTextColor = bgOption === 'dark' ? '#f8fafc' : '#0f172a';
+
+                svgLines.push(`  <g transform="translate(${nx}, ${ny})">`);
+                svgLines.push(`    <rect width="${dim.w}" height="${dim.h}" rx="16" fill="${nodeBg}" stroke="${colorCfg.stroke}" stroke-width="${node.id === mapData.root.id ? 3 : 2}" />`);
+                const emojiStr = node.emoji ? `${node.emoji} ` : '';
+                const checkStr = node.checkbox ? (node.checked ? '☑ ' : '☐ ') : '';
+                svgLines.push(`    <text x="14" y="${dim.h / 2 + 5}" font-family="sans-serif" font-size="${node.id === mapData.root.id ? '15' : '13'}" font-weight="${node.id === mapData.root.id ? 'bold' : 'normal'}" fill="${nodeTextColor}">${escapeHtml(checkStr + emojiStr + (node.text || ''))}</text>`);
+                svgLines.push(`  </g>`);
+            });
+            svgLines.push(`</svg>`);
+
+            const blob = new Blob([svgLines.join('\n')], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${mapData.title || 'mindmap'}.svg`;
+            a.click();
+            URL.revokeObjectURL(url);
+            closeAllModals();
+            showToast('ベクターSVGファイルを保存しました！');
+        }
 
         // 各種ボタンのイベントバインド
         // ✏️ キーボードレス用 テキスト編集ボタン
@@ -1973,6 +2470,30 @@
                 startNodeEdit(found.node);
             }
         });
+
+        // 😀 絵文字ピッカー起動
+        document.getElementById('openEmojiPickerBtn').addEventListener('click', openEmojiPicker);
+        document.getElementById('removeEmojiBtn').addEventListener('click', () => applyEmojiToSelected(null));
+
+        document.querySelectorAll('.emoji-cat-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                currentEmojiCategory = tab.dataset.cat;
+                renderEmojiPicker();
+            });
+        });
+
+        // 🖼️ 画像エクスポート
+        document.getElementById('headerExportImageBtn').addEventListener('click', openImageExportModal);
+        document.getElementById('mobileExportImageBtn').addEventListener('click', () => {
+            mobileMenuDropdown.classList.add('hidden');
+            openImageExportModal();
+        });
+        document.getElementById('modalOpenImageExportBtn').addEventListener('click', () => {
+            closeAllModals();
+            openImageExportModal();
+        });
+        document.getElementById('exportPngBtn').addEventListener('click', exportMapAsPng);
+        document.getElementById('exportSvgBtn').addEventListener('click', exportMapAsSvg);
 
         document.getElementById('addChildBtn').addEventListener('click', addChildNode);
         document.getElementById('addSiblingBtn').addEventListener('click', addSiblingNode);
