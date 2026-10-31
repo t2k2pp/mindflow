@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MindFlow Studio - マインドマップ作成ツール</title>
+    <!-- PWA & Web App Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MindFlow">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+    <link rel="alternate icon" type="image/png" href="./icons/icon-192.png">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -205,6 +215,12 @@
                 <i class="fa-solid fa-sun hidden dark:inline text-amber-400"></i>
             </button>
 
+            <!-- PWA アプリインストールボタン (ブラウザがインストール対応時に表示) -->
+            <button id="installPwaBtn" class="hidden px-2 sm:px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold items-center gap-1.5 shadow-md shadow-blue-500/20 shrink-0 whitespace-nowrap transition" title="この端末にアプリとしてインストール">
+                <i class="fa-solid fa-download text-xs"></i>
+                <span class="hidden xl:inline">インストール</span>
+            </button>
+
             <!-- PC: ヘルプ -->
             <button id="helpBtn" class="hidden md:flex w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 items-center justify-center text-slate-600 dark:text-slate-300 shrink-0 transition" title="操作ヘルプ">
                 <i class="fa-solid fa-question"></i>
@@ -239,6 +255,10 @@
         <button id="mobileShareUrlBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
             <i class="fa-solid fa-share-nodes text-indigo-500 w-4 text-center"></i>
             <span>URLでマップ共有</span>
+        </button>
+        <button id="mobileInstallPwaBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-semibold flex items-center gap-2.5 text-blue-600 dark:text-blue-400 transition">
+            <i class="fa-solid fa-download text-blue-500 w-4 text-center"></i>
+            <span>アプリをホーム画面に追加</span>
         </button>
         <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
         <button id="mobileAutoLayoutToggleBtn" class="w-full px-3 py-2 text-left rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center justify-between text-slate-700 dark:text-slate-200 transition">
@@ -2921,6 +2941,96 @@
             renderAll();
             await saveMapToStorage();
         };
+
+        // ============================================================================
+        // 12. PWA (Progressive Web App) Service Worker & アップデート検知
+        // ============================================================================
+        let deferredInstallPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            const btn = document.getElementById('installPwaBtn');
+            const mBtn = document.getElementById('mobileInstallPwaBtn');
+            if (btn) {
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
+            }
+            if (mBtn) mBtn.classList.remove('hidden');
+        });
+
+        async function triggerPwaInstall() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const choice = await deferredInstallPrompt.userChoice;
+                if (choice.outcome === 'accepted') {
+                    showToast('MindFlow Studio をインストールしました！');
+                }
+                deferredInstallPrompt = null;
+                const btn = document.getElementById('installPwaBtn');
+                if (btn) btn.classList.add('hidden');
+            } else {
+                // iOS Safari 等のブラウザ向け案内
+                const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+                if (isIos) {
+                    showToast('Safariの共有アイコン「⎋」をタップし、「ホーム画面に追加」を選択してください', 'info');
+                } else {
+                    showToast('ブラウザのメニューから「ホーム画面に追加」または「アプリをインストール」を選択してください', 'info');
+                }
+            }
+        }
+
+        document.getElementById('installPwaBtn').addEventListener('click', triggerPwaInstall);
+        document.getElementById('mobileInstallPwaBtn').addEventListener('click', () => {
+            document.getElementById('mobileMenuDropdown').classList.add('hidden');
+            triggerPwaInstall();
+        });
+
+        // Service Worker の登録と新バージョン検知
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    // 新バージョンがバックグラウンドで見つかった時のハンドラ
+                    reg.addEventListener('updatefound', () => {
+                        const newWorker = reg.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showUpdateAvailableToast(newWorker);
+                            }
+                        });
+                    });
+                }).catch((err) => {
+                    console.warn('Service Worker registration skipped:', err);
+                });
+
+                // 新Workerがアクティブになったら自動リロード
+                let refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!refreshing) {
+                        refreshing = true;
+                        window.location.reload();
+                    }
+                });
+            });
+        }
+
+        function showUpdateAvailableToast(newWorker) {
+            const container = document.getElementById('toastContainer');
+            const alertBox = document.createElement('div');
+            alertBox.className = 'pointer-events-auto bg-slate-900/95 dark:bg-slate-800/95 text-white p-3.5 rounded-2xl shadow-2xl border border-blue-500/50 flex items-center justify-between gap-3 text-xs font-medium backdrop-blur-md animate-bounce max-w-sm';
+            alertBox.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sparkles text-amber-400 text-sm"></i>
+                    <span>最新バージョンが利用可能です</span>
+                </div>
+                <button id="updateNowBtn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm shrink-0">更新</button>
+            `;
+            container.appendChild(alertBox);
+            document.getElementById('updateNowBtn').addEventListener('click', () => {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                alertBox.remove();
+            });
+        }
     </script>
 </body>
 </html>
