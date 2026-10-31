@@ -23,6 +23,6 @@
 ## フェーズ4: PWA（Progressive Web App）化・端末インストール対応
 - [x] 15. PWA設計書の作成とToDo更新・リモート格納
 - [x] 16. アプリアイコン（SVG & PNG）と Web App Manifest (`manifest.json`) の作成
-- [ ] 17. Service Worker (`sw.js`) の作成（オフラインキャッシュと自動アップデート検知機構）
+- [x] 17. Service Worker (`sw.js`) の作成（オフラインキャッシュと自動アップデート検知機構）
 - [ ] 18. HTMLへのPWAメタタグ、Service Worker登録、インストール促進UIの組み込み
 - [ ] 19. 総合動作検証、mindflow_studio.html同期、mainブランチへのプッシュ
