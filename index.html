@@ -62,7 +62,7 @@
         .mind-node {
             position: absolute;
             transform-origin: center center;
-            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+            transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
             cursor: grab;
             max-width: 320px;
             min-width: 110px;
@@ -82,24 +82,29 @@
             animation: pulse-ring 1.5s infinite;
         }
 
+        /* ドラッグによる線のつなぎ直し ドロップ先候補ハイライト */
+        .mind-node.drop-target {
+            outline: 3px dashed #3b82f6 !important;
+            outline-offset: 4px;
+            transform: translate(-50%, -50%) scale(1.08) !important;
+            box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.35), 0 20px 25px -5px rgba(0, 0, 0, 0.2) !important;
+            z-index: 50 !important;
+        }
+
         @keyframes pulse-ring {
             0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
             100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
         }
 
-        /* 関連線のホバー・アニメーション */
+        /* 関連線のスタイル (静止した落ち着いた破線) */
         .assoc-path {
             stroke-dasharray: 6, 6;
-            animation: dash-move 20s linear infinite;
             cursor: pointer;
-            transition: stroke-width 0.15s ease;
+            transition: stroke-width 0.15s ease, stroke 0.15s ease;
         }
         .assoc-path:hover {
             stroke-width: 4px !important;
-        }
-        @keyframes dash-move {
-            to { stroke-dashoffset: -1000; }
         }
 
         /* スクロールバー装飾 */
@@ -578,6 +583,53 @@
         </div>
     </div>
 
+    <!-- ==================== モーダル: 関連線の文字（ラベル）設定 ==================== -->
+    <div id="assocLabelModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-5 py-3.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-sm sm:text-base flex items-center gap-2">
+                    <i class="fa-solid fa-bezier-curve text-purple-500"></i>
+                    <span>関連線の文字（関係性）を入力</span>
+                </h3>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3.5">
+                <!-- よく使うラベルのプリセット -->
+                <div class="space-y-1.5">
+                    <span class="text-[11px] font-semibold text-slate-400">よく使う関係性（ワンタップで入力）</span>
+                    <div class="flex flex-wrap gap-1.5" id="assocPresetButtons">
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">関連</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">原因</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">影響</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">依存</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">参照</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">前提</button>
+                        <button type="button" class="assoc-preset-btn px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold transition">対立</button>
+                    </div>
+                </div>
+
+                <!-- 自由テキスト入力 -->
+                <div class="space-y-1">
+                    <label for="assocLabelInput" class="text-xs font-bold text-slate-700 dark:text-slate-300">線の文字</label>
+                    <input id="assocLabelInput" type="text" placeholder="例: 共同開発, 次フェーズ..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs sm:text-sm font-semibold outline-none ring-2 ring-transparent focus:ring-purple-500 transition">
+                </div>
+
+                <div class="flex items-center justify-between pt-1">
+                    <button id="deleteAssocFromModalBtn" class="px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition">
+                        線を削除
+                    </button>
+                    <div class="flex gap-2">
+                        <button class="close-modal-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition">閉じる</button>
+                        <button id="saveAssocLabelBtn" class="px-4 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-md transition">決定</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== モーダル 5: ヘルプ＆ショートカット一覧 ==================== -->
     <div id="helpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden">
@@ -623,14 +675,15 @@
                         <span>iPad・タブレット・スマートフォンでの操作</span>
                     </div>
                     <ul class="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-300">
-                        <li><strong>アイテム移動：</strong> ノードを1本指でドラッグすると自由に配置できます。</li>
+                        <li><strong>アイテム移動＆線のつなぎ直し：</strong> ノードをドラッグして自由に配置できます。別のノードの上に重ねて離すと親ノードのつなぎ直しができます。</li>
                         <li><strong>キャンバス操作：</strong> 背景を1本指でスワイプして移動、2本指でピンチイン/アウトして拡大・縮小できます。</li>
-                        <li><strong>文字編集：</strong> ノードを選択して下部の「編集」ボタンを押すか、ノードをダブルタップしてください。</li>
+                        <li><strong>文字編集＆即時確定：</strong> ノードを選択して下部の「編集」ボタンを押すか、ノードをダブルタップしてください。背景を触ると即座に入力が確定します。</li>
                     </ul>
                 </div>
                 <ul class="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-300">
+                    <li><strong>線のつなぎ直し（Re-parenting）：</strong> 子ノードをドラッグして別の親候補に重ねると青い破線枠が点灯し、ドロップで線のつなぎ直しが完了します。</li>
                     <li><strong>手動配置と自動配置：</strong> ノードをドラッグして動かすと自動的に「手動配置モード」に切り替わります。上部の「整列」ボタンを押すといつでも綺麗に再整列できます。</li>
-                    <li><strong>関連線（破線矢印）：</strong> 下部バーの「関連線」を押してから別ノードをクリックすると、親子関係以外の自由な関連線を結べます。線をクリックするとラベル編集や削除ができます。</li>
+                    <li><strong>関連線（関係性ラベル）：</strong> 下部バーの「関連線」を押してから別ノードをタップすると関係線を結べます。線やラベルをタップするとプリセット（原因・影響・依存など）や自由テキストで文字を簡単に入力・変更できます。</li>
                 </ul>
             </div>
         </div>
@@ -1025,6 +1078,16 @@
             }
         }
 
+        // candidateがancestor自身またはその子孫であるかを判定（循環参照・Re-parenting防止用）
+        function isDescendantOf(candidate, ancestor) {
+            if (!candidate || !ancestor) return false;
+            if (candidate.id === ancestor.id) return true;
+            for (const ch of ancestor.children || []) {
+                if (isDescendantOf(candidate, ch)) return true;
+            }
+            return false;
+        }
+
         // ============================================================================
         // 4. 自動配置（オートレイアウト）エンジン
         // ============================================================================
@@ -1317,6 +1380,18 @@
             renderAll();
         }
 
+        // キャンバス背景タップ時や別操作開始時に現在のインライン編集を確定して閉じる
+        function finishCurrentEditingIfAny() {
+            if (editingNodeId) {
+                if (document.activeElement && (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT')) {
+                    document.activeElement.blur();
+                } else {
+                    editingNodeId = null;
+                    renderAll();
+                }
+            }
+        }
+
         function renderConnections() {
             treeLinksGroup.innerHTML = '';
             assocLinksGroup.innerHTML = '';
@@ -1392,6 +1467,7 @@
                     selectedAssocId = assoc.id;
                     selectedNodeId = null;
                     renderAll();
+                    openAssocLabelModal(assoc);
                 });
 
                 path.addEventListener('dblclick', (e) => {
@@ -1416,19 +1492,15 @@
                 foreign.style.overflow = 'visible';
 
                 const badge = document.createElement('div');
-                badge.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shadow-sm cursor-pointer transition ${isSelected ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700'}`;
+                badge.className = `inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold shadow-sm cursor-pointer transition select-none ${isSelected ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700 hover:scale-105'}`;
                 badge.innerHTML = `<span>${escapeHtml(labelText)}</span>`;
-                badge.title = 'クリックで選択 / ダブルクリックでラベル変更';
+                badge.title = 'タップして文字（関係性）を変更';
 
                 badge.addEventListener('click', (e) => {
                     e.stopPropagation();
                     selectedAssocId = assoc.id;
                     selectedNodeId = null;
                     renderAll();
-                });
-                badge.addEventListener('dblclick', (e) => {
-                    e.stopPropagation();
-                    selectedAssocId = assoc.id;
                     openAssocLabelModal(assoc);
                 });
 
@@ -1455,25 +1527,37 @@
             let startClientY = 0;
             let moved = false;
             let lastTapTime = 0;
+            let currentDropTarget = null;
+            const canReparent = (node.id !== mapData.root.id);
 
             el.addEventListener('pointerdown', (e) => {
                 // マウス操作時の左クリック以外は除外（タッチ端末はpointerType='touch'でbutton=0）
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.stopPropagation();
 
+                // 編集中のノードがあれば即時確定
+                if (editingNodeId && editingNodeId !== node.id) {
+                    finishCurrentEditingIfAny();
+                }
+
                 // 関連線作成モード中の場合
                 if (assocCreationSourceId) {
                     if (assocCreationSourceId !== node.id) {
                         pushHistory();
                         mapData.associations = mapData.associations || [];
-                        mapData.associations.push({
+                        const newAssoc = {
                             id: 'assoc_' + Date.now(),
                             fromId: assocCreationSourceId,
                             toId: node.id,
                             label: '関連'
-                        });
-                        showToast('関連付けの線を作成しました（ダブルタップでラベル編集）');
+                        };
+                        mapData.associations.push(newAssoc);
                         saveMapToStorage();
+                        exitAssocCreationMode();
+                        selectedNodeId = null;
+                        renderAll();
+                        openAssocLabelModal(newAssoc);
+                        return;
                     }
                     exitAssocCreationMode();
                     selectedNodeId = node.id;
@@ -1487,6 +1571,7 @@
                 moved = false;
                 startClientX = e.clientX;
                 startClientY = e.clientY;
+                currentDropTarget = null;
 
                 // 重要: DOM要素を再生成(innerHTMLクリア)せず、CSSクラスのみ変更することでポインターキャプチャの喪失・ドラッグ中断を防止
                 updateSelectedNodeVisual();
@@ -1537,6 +1622,35 @@
                         }
                     });
 
+                    // ドラッグによる線のつなぎ直し (Re-parenting) 候補の検出
+                    if (canReparent) {
+                        let potentialTargetNode = null;
+                        let potentialTargetEl = null;
+
+                        const hitElements = document.elementsFromPoint(e.clientX, e.clientY);
+                        for (const hitEl of hitElements) {
+                            const candidateEl = hitEl.closest('.mind-node');
+                            if (candidateEl && candidateEl.dataset.nodeId !== node.id) {
+                                const candFound = findNodeAndParent(candidateEl.dataset.nodeId);
+                                if (candFound && !isDescendantOf(candFound.node, node)) {
+                                    potentialTargetNode = candFound.node;
+                                    potentialTargetEl = candidateEl;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (potentialTargetNode !== currentDropTarget) {
+                            nodesContainer.querySelectorAll('.mind-node.drop-target').forEach(te => {
+                                te.classList.remove('drop-target');
+                            });
+                            currentDropTarget = potentialTargetNode;
+                            if (potentialTargetEl) {
+                                potentialTargetEl.classList.add('drop-target');
+                            }
+                        }
+                    }
+
                     renderConnections();
                 }
             });
@@ -1550,10 +1664,44 @@
                     }
                 } catch (_) {}
 
+                // ドロップターゲットのハイライト全解除
+                nodesContainer.querySelectorAll('.mind-node.drop-target').forEach(te => {
+                    te.classList.remove('drop-target');
+                });
+
                 if (moved) {
+                    // 親の付け替え (Re-parenting) の実行判定
+                    if (canReparent && currentDropTarget) {
+                        const currentParentInfo = findNodeAndParent(node.id);
+                        const oldParent = currentParentInfo ? currentParentInfo.parent : null;
+
+                        if (oldParent && oldParent.id !== currentDropTarget.id && currentDropTarget.id !== node.id) {
+                            // 旧親から自身を削除
+                            oldParent.children = (oldParent.children || []).filter(c => c.id !== node.id);
+
+                            // 新親へ自身を追加
+                            currentDropTarget.children = currentDropTarget.children || [];
+                            currentDropTarget.children.push(node);
+                            currentDropTarget.collapsed = false;
+
+                            if (currentDropTarget.id === mapData.root.id) {
+                                node.direction = node.x < mapData.root.x ? 'left' : 'right';
+                            } else {
+                                node.direction = currentDropTarget.direction;
+                            }
+
+                            showToast(`「${node.text}」を「${currentDropTarget.text}」につなぎ直しました`);
+                            currentDropTarget = null;
+                            renderAll();
+                            saveMapToStorage();
+                            return;
+                        }
+                    }
+                    currentDropTarget = null;
                     renderAll();
                     saveMapToStorage();
                 } else {
+                    currentDropTarget = null;
                     // タップ判定（ダブルタップ判定: 320ms以内の連続タップでインラインテキスト編集）
                     const now = Date.now();
                     if (now - lastTapTime < 320) {
@@ -1578,9 +1726,16 @@
         let panStartY = 0;
 
         canvasViewport.addEventListener('pointerdown', (e) => {
+            // 背景クリック時に編集中のノードがあれば確定＆キーボード閉じる
+            finishCurrentEditingIfAny();
+
             // ノード外のキャンバス・背景をクリックした場合のみパン開始
             if (e.target !== canvasViewport && e.target !== canvasTransform && e.target.tagName !== 'svg') return;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+            if (assocCreationSourceId) {
+                exitAssocCreationMode();
+            }
 
             isPanning = true;
             panStartX = e.clientX - viewState.x;
@@ -1634,6 +1789,11 @@
         let isTouchPanning = false;
 
         canvasViewport.addEventListener('touchstart', (e) => {
+            // ノード外の背景タッチ時に編集中のノードがあれば確定＆キーボード閉じる
+            if (!e.target.closest('.mind-node')) {
+                finishCurrentEditingIfAny();
+            }
+
             // ノード上のタッチはノード固有のPointerイベントに任せる
             if (e.target.closest('.mind-node')) return;
 
@@ -2077,27 +2237,13 @@
             updateViewportTransform();
         }
 
-        // ノードメモ / 関連線ラベルモーダル
-        let noteModalMode = 'node'; // 'node' or 'assoc'
-        let editingAssocObj = null;
-
+        // ノードメモ モーダル
         function openNoteModal() {
             if (!selectedNodeId) return;
             const found = findNodeAndParent(selectedNodeId);
             if (!found) return;
-            noteModalMode = 'node';
             document.getElementById('noteModalTitle').innerHTML = '<i class="fa-regular fa-note-sticky text-cyan-500"></i><span>ノードの詳細メモ</span>';
             document.getElementById('noteModalTextarea').value = found.node.note || '';
-            document.getElementById('noteModal').classList.remove('hidden');
-            document.getElementById('noteModal').classList.add('flex');
-            document.getElementById('noteModalTextarea').focus();
-        }
-
-        function openAssocLabelModal(assoc) {
-            noteModalMode = 'assoc';
-            editingAssocObj = assoc;
-            document.getElementById('noteModalTitle').innerHTML = '<i class="fa-solid fa-bezier-curve text-purple-500"></i><span>関連線のラベル編集</span>';
-            document.getElementById('noteModalTextarea').value = assoc.label || '';
             document.getElementById('noteModal').classList.remove('hidden');
             document.getElementById('noteModal').classList.add('flex');
             document.getElementById('noteModalTextarea').focus();
@@ -2106,19 +2252,98 @@
         document.getElementById('saveNoteBtn').addEventListener('click', () => {
             const val = document.getElementById('noteModalTextarea').value.trim();
             pushHistory();
-            if (noteModalMode === 'node' && selectedNodeId) {
+            if (selectedNodeId) {
                 const found = findNodeAndParent(selectedNodeId);
                 if (found) found.node.note = val;
-            } else if (noteModalMode === 'assoc' && editingAssocObj) {
-                editingAssocObj.label = val || '関連';
             }
             closeAllModals();
             renderAll();
             saveMapToStorage();
         });
 
+        // ============================================================================
+        // 関連線の文字（関係性）設定モーダル
+        // ============================================================================
+        let editingAssocObj = null;
+
+        function openAssocLabelModal(assoc) {
+            if (!assoc) return;
+            editingAssocObj = assoc;
+            selectedAssocId = assoc.id;
+            selectedNodeId = null;
+
+            const input = document.getElementById('assocLabelInput');
+            if (input) {
+                input.value = assoc.label || '';
+            }
+            const modal = document.getElementById('assocLabelModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+            setTimeout(() => {
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 60);
+        }
+
+        // プリセットボタン（ワンタップで即時設定・反映）
+        document.querySelectorAll('.assoc-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!editingAssocObj) return;
+                const text = btn.textContent.trim();
+                const input = document.getElementById('assocLabelInput');
+                if (input) input.value = text;
+
+                pushHistory();
+                editingAssocObj.label = text;
+                closeAllModals();
+                renderAll();
+                saveMapToStorage();
+                showToast(`関連線の文字を「${text}」に設定しました`);
+            });
+        });
+
+        // 決定ボタン
+        document.getElementById('saveAssocLabelBtn').addEventListener('click', () => {
+            if (!editingAssocObj) return;
+            const input = document.getElementById('assocLabelInput');
+            const val = (input ? input.value.trim() : '') || '関連';
+            pushHistory();
+            editingAssocObj.label = val;
+            closeAllModals();
+            renderAll();
+            saveMapToStorage();
+            showToast(`関連線の文字を「${val}」に設定しました`);
+        });
+
+        // 自由テキスト入力時のEnterキー
+        document.getElementById('assocLabelInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('saveAssocLabelBtn').click();
+            } else if (e.key === 'Escape') {
+                closeAllModals();
+            }
+        });
+
+        // 線の削除ボタン
+        document.getElementById('deleteAssocFromModalBtn').addEventListener('click', () => {
+            if (!editingAssocObj) return;
+            pushHistory();
+            mapData.associations = (mapData.associations || []).filter(a => a.id !== editingAssocObj.id);
+            selectedAssocId = null;
+            editingAssocObj = null;
+            closeAllModals();
+            renderAll();
+            saveMapToStorage();
+            showToast('関連付けの線を削除しました');
+        });
+
         function closeAllModals() {
-            ['ioModal', 'shareModal', 'storageModal', 'noteModal', 'helpModal', 'emojiPickerModal', 'imageExportModal'].forEach(id => {
+            ['ioModal', 'shareModal', 'storageModal', 'noteModal', 'helpModal', 'emojiPickerModal', 'imageExportModal', 'assocLabelModal'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden');

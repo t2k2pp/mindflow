@@ -3,7 +3,7 @@
  * Supports: Offline capability, Fast caching, and Seamless background updates
  */
 
-const CACHE_NAME = 'mindflow-cache-v1.0.1';
+const CACHE_NAME = 'mindflow-cache-v1.0.2';
 
 // プリキャッシュ対象アセット
 const PRECACHE_ASSETS = [
