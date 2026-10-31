@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MindFlow Studio - マインドマップ作成ツール</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter & Noto Sans JP -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- LZ-String for URL Compression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* キャンバス背景のドットグリッド */
+        .bg-dot-grid {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+        }
+        .dark .bg-dot-grid {
+            background-color: #0f172a;
+            background-image: radial-gradient(#334155 1.5px, transparent 1.5px);
+        }
+
+        /* ノードのアニメーションとスタイル */
+        .mind-node {
+            position: absolute;
+            transform-origin: center center;
+            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+            cursor: grab;
+            max-width: 320px;
+            min-width: 110px;
+        }
+        .mind-node:active {
+            cursor: grabbing;
+        }
+        .mind-node.selected {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .dark .mind-node.selected {
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.6), 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+        .mind-node.assoc-source {
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
+
+        /* 関連線のホバー・アニメーション */
+        .assoc-path {
+            stroke-dasharray: 6, 6;
+            animation: dash-move 20s linear infinite;
+            cursor: pointer;
+            transition: stroke-width 0.15s ease;
+        }
+        .assoc-path:hover {
+            stroke-width: 4px !important;
+        }
+        @keyframes dash-move {
+            to { stroke-dashoffset: -1000; }
+        }
+
+        /* スクロールバー装飾 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.5);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 w-screen h-screen relative overflow-hidden">
+
+    <!-- ==================== トップナビゲーションバー ==================== -->
+    <header class="fixed top-3 left-3 right-3 h-14 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg z-30 flex items-center justify-between px-4 transition-all">
+        <!-- 左側: ロゴ & マップ選択/タイトル -->
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-lg tracking-tight">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-diagram-project"></i>
+                </div>
+                <span class="hidden sm:inline">MindFlow</span>
+            </div>
+
+            <div class="h-6 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+            <!-- マップタイトル入力 -->
+            <div class="relative flex items-center">
+                <input id="mapTitleInput" type="text" value="新規マインドマップ" 
+                    class="bg-transparent hover:bg-slate-100 dark:hover:bg-slate-700/60 focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500 rounded-lg px-2.5 py-1 text-sm font-semibold w-36 sm:w-52 transition-all outline-none"
+                    title="マップのタイトルを編集">
+            </div>
+
+            <!-- 保存済みマップ一覧ドロップダウン -->
+            <button id="openMapListBtn" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-sm flex items-center gap-1.5 transition" title="保存済みマップ一覧 (IndexedDB)">
+                <i class="fa-solid fa-folder-open text-amber-500"></i>
+                <span class="hidden md:inline text-xs font-medium">マップ管理</span>
+            </button>
+        </div>
+
+        <!-- 中央: レイアウト・Undo/Redoコントロール -->
+        <div class="hidden lg:flex items-center gap-1 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl border border-slate-200/60 dark:border-slate-600/50">
+            <button id="undoBtn" class="p-1.5 px-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-40 transition text-xs flex items-center gap-1" title="元に戻す (Ctrl+Z)">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+            <button id="redoBtn" class="p-1.5 px-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm disabled:opacity-40 transition text-xs flex items-center gap-1" title="やり直す (Ctrl+Y)">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            <div class="h-4 w-[1px] bg-slate-300 dark:bg-slate-600 mx-1"></div>
+            <button id="autoLayoutToggleBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm" title="自動整列モードと自由配置モードの切り替え">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span id="layoutModeText">自動配置: ON</span>
+            </button>
+            <button id="reLayoutBtn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 transition flex items-center gap-1" title="今すぐ綺麗に自動整列する">
+                <i class="fa-solid fa-align-left"></i>
+                <span>整列</span>
+            </button>
+            <select id="layoutDirSelect" class="bg-transparent text-xs font-medium text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg outline-none cursor-pointer hover:bg-white dark:hover:bg-slate-800 transition" title="自動配置の展開方向">
+                <option value="both" class="dark:bg-slate-800">左右展開</option>
+                <option value="right" class="dark:bg-slate-800">右方向のみ</option>
+            </select>
+        </div>
+
+        <!-- 右側: 共有 & 入出力 & テーマ -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+            <span id="saveStatus" class="hidden xl:inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full font-medium">
+                <i class="fa-solid fa-cloud-check"></i> 保存済
+            </span>
+
+            <button id="openIoModalBtn" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Markdown / JSON のインポートとエクスポート">
+                <i class="fa-solid fa-file-import"></i>
+                <span class="hidden sm:inline">入出力 (MD/JSON)</span>
+            </button>
+
+            <button id="shareUrlBtn" class="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition" title="URLでマップやMarkdownを共有">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span class="hidden sm:inline">URL共有</span>
+            </button>
+
+            <button id="themeToggleBtn" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ダークモード切替">
+                <i class="fa-solid fa-moon dark:hidden"></i>
+                <i class="fa-solid fa-sun hidden dark:inline text-amber-400"></i>
+            </button>
+
+            <button id="helpBtn" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition" title="ショートカットと使い方">
+                <i class="fa-solid fa-question"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== 関連付け線作成モードバナー ==================== -->
+    <div id="assocModeBanner" class="fixed top-20 left-1/2 -translate-x-1/2 z-30 hidden bg-purple-600 text-white px-5 py-2.5 rounded-full shadow-xl flex items-center gap-3 text-sm font-medium animate-bounce">
+        <i class="fa-solid fa-bezier-curve"></i>
+        <span>関連付ける先のノードをクリックしてください</span>
+        <button id="cancelAssocBtn" class="bg-white/20 hover:bg-white/30 px-2.5 py-0.5 rounded-full text-xs transition">キャンセル (Esc)</button>
+    </div>
+
+    <!-- ==================== メインキャンバスエリア ==================== -->
+    <main id="canvasViewport" class="w-full h-full bg-dot-grid relative overflow-hidden cursor-grab active:cursor-grabbing">
+        <!-- ズーム・パン変換コンテナ -->
+        <div id="canvasTransform" class="absolute top-0 left-0 origin-top-left" style="transform: translate(0px, 0px) scale(1);">
+            <!-- SVGレイヤー (構造線・関連線) -->
+            <svg id="connectionsSvg" class="overflow-visible pointer-events-none absolute top-0 left-0" width="1" height="1">
+                <defs>
+                    <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#9333ea" />
+                    </marker>
+                    <marker id="arrow-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+                    </marker>
+                </defs>
+                <g id="treeLinksGroup"></g>
+                <g id="assocLinksGroup" class="pointer-events-auto"></g>
+            </svg>
+
+            <!-- HTMLノードレイヤー -->
+            <div id="nodesContainer" class="relative"></div>
+        </div>
+    </main>
+
+    <!-- ==================== 下部フローティング・ノード操作ツールバー ==================== -->
+    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 max-w-[96vw]">
+        <!-- カラー＆ノートポップオーバー (選択中かつ開いている時表示) -->
+        <div id="colorPalettePanel" class="hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-2.5 rounded-2xl shadow-xl flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-500 dark:text-slate-400 px-1">ノード色:</span>
+            <button data-color="slate" class="color-swatch w-6 h-6 rounded-full bg-white border-2 border-slate-300 hover:scale-110 transition" title="デフォルト"></button>
+            <button data-color="blue" class="color-swatch w-6 h-6 rounded-full bg-blue-100 border-2 border-blue-500 hover:scale-110 transition" title="ブルー"></button>
+            <button data-color="emerald" class="color-swatch w-6 h-6 rounded-full bg-emerald-100 border-2 border-emerald-500 hover:scale-110 transition" title="エメラルド"></button>
+            <button data-color="amber" class="color-swatch w-6 h-6 rounded-full bg-amber-100 border-2 border-amber-500 hover:scale-110 transition" title="アンバー"></button>
+            <button data-color="rose" class="color-swatch w-6 h-6 rounded-full bg-rose-100 border-2 border-rose-500 hover:scale-110 transition" title="ローズ"></button>
+            <button data-color="purple" class="color-swatch w-6 h-6 rounded-full bg-purple-100 border-2 border-purple-500 hover:scale-110 transition" title="パープル"></button>
+            <button data-color="cyan" class="color-swatch w-6 h-6 rounded-full bg-cyan-100 border-2 border-cyan-500 hover:scale-110 transition" title="シアン"></button>
+        </div>
+
+        <!-- メイン操作ドック -->
+        <div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl shadow-xl flex items-center gap-1 sm:gap-1.5 overflow-x-auto max-w-full">
+            <button id="addChildBtn" class="px-3 py-2 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子ノードを追加 (Tab)">
+                <i class="fa-solid fa-sitemap text-blue-500"></i>
+                <span>子追加</span>
+                <kbd class="hidden sm:inline-block text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">Tab</kbd>
+            </button>
+
+            <button id="addSiblingBtn" class="px-3 py-2 rounded-xl hover:bg-blue-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="兄弟ノードを追加 (Enter)">
+                <i class="fa-solid fa-plus text-indigo-500"></i>
+                <span>兄弟追加</span>
+                <kbd class="hidden sm:inline-block text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500">Enter</kbd>
+            </button>
+
+            <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+            <button id="toggleCheckboxBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="チェックボックスのON/OFF">
+                <i class="fa-regular fa-square-check text-emerald-500 text-sm"></i>
+                <span class="hidden md:inline">チェック</span>
+            </button>
+
+            <button id="toggleColorBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードの色を変更">
+                <i class="fa-solid fa-palette text-pink-500 text-sm"></i>
+                <span class="hidden md:inline">色変更</span>
+            </button>
+
+            <button id="startAssocBtn" class="px-2.5 py-2 rounded-xl hover:bg-purple-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="別ノードへ関連付けの線（破線矢印）を引く">
+                <i class="fa-solid fa-bezier-curve text-purple-500 text-sm"></i>
+                <span class="hidden md:inline">関連線</span>
+            </button>
+
+            <button id="toggleCollapseBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="子孫ノードを折りたたむ / 展開 (Space)">
+                <i class="fa-solid fa-compress text-amber-500 text-sm"></i>
+                <span class="hidden md:inline">折りたたみ</span>
+            </button>
+
+            <button id="editNoteBtn" class="px-2.5 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium flex items-center gap-1.5 shrink-0 transition" title="ノードに詳細メモを追加">
+                <i class="fa-regular fa-note-sticky text-cyan-500 text-sm"></i>
+                <span class="hidden md:inline">メモ</span>
+            </button>
+
+            <div class="h-5 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5 shrink-0"></div>
+
+            <button id="deleteNodeBtn" class="px-2.5 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-medium flex items-center gap-1 shrink-0 transition" title="選択中のノードまたは関連線を削除 (Delete)">
+                <i class="fa-regular fa-trash-can text-sm"></i>
+                <span class="hidden md:inline">削除</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== 右下 ズーム＆ビュー操作パネル ==================== -->
+    <div class="fixed bottom-4 right-4 z-20 hidden sm:flex items-center gap-1 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-1.5 rounded-2xl shadow-lg">
+        <button id="zoomOutBtn" class="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs" title="縮小">
+            <i class="fa-solid fa-minus"></i>
+        </button>
+        <button id="zoomResetBtn" class="px-2 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 min-w-[52px]" title="100%に戻す">
+            100%
+        </button>
+        <button id="zoomInBtn" class="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs" title="拡大">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+        <div class="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+        <button id="centerViewBtn" class="w-8 h-8 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 text-xs" title="全体を中心へフィット">
+            <i class="fa-solid fa-expand"></i>
+        </button>
+    </div>
+
+    <!-- ==================== モーダル 1: インポート / エクスポート (Markdown & JSON) ==================== -->
+    <div id="ioModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-code-compare text-blue-500 text-lg"></i>
+                    <h3 class="font-bold text-base">データのインポート / エクスポート</h3>
+                </div>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- フォーマット切替タブ -->
+            <div class="px-6 pt-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
+                <div class="flex gap-2">
+                    <button id="tabMarkdownBtn" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition">
+                        <i class="fa-brands fa-markdown mr-1"></i> Markdown形式
+                    </button>
+                    <button id="tabJsonBtn" class="px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-brackets-curly mr-1"></i> JSON形式 (完全保持)
+                    </button>
+                </div>
+
+                <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-medium text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-upload text-blue-500"></i>
+                    <span>ファイル読込 (.md/.json)</span>
+                    <input id="fileUploadInput" type="file" accept=".md,.markdown,.txt,.json" class="hidden">
+                </label>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto space-y-3">
+                <p id="ioFormatDesc" class="text-xs text-slate-500 dark:text-slate-400">
+                    見出し（<code>#</code>）や箇条書き（<code>- </code> / インデント）、タスクリスト（<code>- [ ] </code> / <code>- [x] </code>）に双方向対応しています。直接編集して「マップに反映」を押すと即座にマインドマップへ変換されます。
+                </p>
+                <textarea id="ioTextarea" rows="12" 
+                    class="w-full font-mono text-xs p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none resize-y leading-relaxed"></textarea>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <button id="copyIoTextBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-regular fa-copy"></i> コピー
+                    </button>
+                    <button id="downloadFileBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-download"></i> ファイル保存
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="close-modal-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 transition">閉じる</button>
+                    <button id="applyImportBtn" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition">
+                        <i class="fa-solid fa-check"></i> マップに反映 (インポート)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== モーダル 2: URL共有モーダル ==================== -->
+    <div id="shareModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-share-nodes text-blue-500 text-lg"></i>
+                    <h3 class="font-bold text-base">URLでマインドマップを共有</h3>
+                </div>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    サーバーを使わず、URLのハッシュパラメータにデータを圧縮して埋め込みます。GitHub Pages等で公開した際、このURLを相手に送るだけで同じマップやMarkdownを共有できます。
+                </p>
+
+                <!-- 共有モード選択 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="cursor-pointer border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 flex items-start gap-3 hover:border-blue-500 transition has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/40 dark:has-[:checked]:bg-blue-950/30">
+                        <input type="radio" name="shareMode" value="md" checked class="mt-1 text-blue-600">
+                        <div>
+                            <div class="text-xs font-bold flex items-center gap-1.5">
+                                <i class="fa-brands fa-markdown text-blue-500"></i> Markdown共有モード
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                階層構造とチェックボックスを圧縮して共有します。URLが短くなりやすくおすすめです。
+                            </p>
+                        </div>
+                    </label>
+
+                    <label class="cursor-pointer border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 flex items-start gap-3 hover:border-blue-500 transition has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/40 dark:has-[:checked]:bg-blue-950/30">
+                        <input type="radio" name="shareMode" value="json" class="mt-1 text-blue-600">
+                        <div>
+                            <div class="text-xs font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-diagram-project text-purple-500"></i> 完全JSON共有モード
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                手動配置の座標・色・関連線・メモも含めすべての状態を完全に再現します。
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 生成されたURL -->
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <span class="font-semibold text-slate-600 dark:text-slate-300">共有用URL</span>
+                        <span id="shareUrlLengthInfo" class="text-slate-400">文字数: 0</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="shareUrlOutput" type="text" readonly 
+                            class="w-full font-mono text-xs px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none select-all">
+                        <button id="copyShareUrlBtn" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition">
+                            <i class="fa-regular fa-copy"></i> URLをコピー
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== モーダル 3: 保存済みマップ管理 (IndexedDB) ==================== -->
+    <div id="storageModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-database text-amber-500 text-lg"></i>
+                    <h3 class="font-bold text-base">ブラウザ保存済みマップ一覧 (IndexedDB)</h3>
+                </div>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs text-slate-500 dark:text-slate-400">編集中の内容はLocalStorageおよびIndexedDBに自動保存されます。</p>
+                    <button id="createNewMapBtn" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition shrink-0">
+                        <i class="fa-solid fa-plus"></i> 新規マップ作成
+                    </button>
+                </div>
+
+                <div id="savedMapsList" class="space-y-2 pt-2">
+                    <!-- JSで動的にレンダリング -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== モーダル 4: ノードメモ・関連線ラベル編集 ==================== -->
+    <div id="noteModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 id="noteModalTitle" class="font-bold text-base flex items-center gap-2">
+                    <i class="fa-regular fa-note-sticky text-cyan-500"></i>
+                    <span>ノードの詳細メモ</span>
+                </h3>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-3">
+                <textarea id="noteModalTextarea" rows="5" placeholder="補足情報やURL、メモを入力してください..."
+                    class="w-full text-sm p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                <div class="flex justify-end gap-2">
+                    <button class="close-modal-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700">キャンセル</button>
+                    <button id="saveNoteBtn" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== モーダル 5: ヘルプ＆ショートカット一覧 ==================== -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-base flex items-center gap-2">
+                    <i class="fa-regular fa-circle-question text-blue-500"></i>
+                    <span>操作方法・ショートカットキー</span>
+                </h3>
+                <button class="close-modal-btn w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center text-slate-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs leading-relaxed">
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>子ノード追加</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Tab</kbd>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>兄弟ノード追加</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Enter</kbd>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>テキスト編集</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">ダブルクリック / F2</kbd>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>折りたたみ切替</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Space</kbd>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>ノード・関連線削除</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Del / BackSpace</kbd>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 flex justify-between items-center">
+                        <span>元に戻す / やり直し</span>
+                        <kbd class="px-2 py-1 bg-white dark:bg-slate-700 rounded shadow-2xs font-mono">Ctrl+Z / Y</kbd>
+                    </div>
+                </div>
+                <ul class="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-300">
+                    <li><strong>手動配置と自動配置：</strong> ノードをドラッグして動かすと自動的に「手動配置モード」に切り替わります。上部の「整列」ボタンを押すといつでも綺麗に再整列できます。</li>
+                    <li><strong>関連線（破線矢印）：</strong> 下部バーの「関連線」を押してから別ノードをクリックすると、親子関係以外の自由な関連線を結べます。線をクリックするとラベル編集や削除ができます。</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toastContainer" class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== アプリケーションスクリプト ==================== -->
+    <script>
+        /**
+         * MindFlow Studio - Single File Mind Map Application
+         * Supports: Auto/Manual Layout, Folding, Checkboxes, Colors, Association Lines,
+         * Markdown/JSON Import & Export, URL Hash Sharing (LZString), LocalStorage & IndexedDB
+         */
+
+        // --- カラーテーマ定義 ---
+        const NODE_COLORS = {
+            slate:   { bg: 'bg-white dark:bg-slate-800', border: 'border-slate-300 dark:border-slate-600', text: 'text-slate-800 dark:text-slate-100', stroke: '#64748b' },
+            blue:    { bg: 'bg-blue-50 dark:bg-blue-950/80', border: 'border-blue-400 dark:border-blue-500', text: 'text-blue-950 dark:text-blue-100', stroke: '#3b82f6' },
+            emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/80', border: 'border-emerald-400 dark:border-emerald-500', text: 'text-emerald-950 dark:text-emerald-100', stroke: '#10b981' },
+            amber:   { bg: 'bg-amber-50 dark:bg-amber-950/80', border: 'border-amber-400 dark:border-amber-500', text: 'text-amber-950 dark:text-amber-100', stroke: '#f59e0b' },
+            rose:    { bg: 'bg-rose-50 dark:bg-rose-950/80', border: 'border-rose-400 dark:border-rose-500', text: 'text-rose-950 dark:text-rose-100', stroke: '#f43f5e' },
+            purple:  { bg: 'bg-purple-50 dark:bg-purple-950/80', border: 'border-purple-400 dark:border-purple-500', text: 'text-purple-950 dark:text-purple-100', stroke: '#a855f7' },
+            cyan:    { bg: 'bg-cyan-50 dark:bg-cyan-950/80', border: 'border-cyan-400 dark:border-cyan-500', text: 'text-cyan-950 dark:text-cyan-100', stroke: '#06b6d4' }
+        };
+
+        // --- 初期サンプルデータ ---
+        function createDefaultMapData() {
+            return {
+                id: 'map_' + Date.now(),
+                title: 'プロジェクト構想マインドマップ',
+                updatedAt: Date.now(),
+                autoLayout: true,
+                layoutDir: 'both', // 'both' or 'right'
+                root: {
+                    id: 'n_root',
+                    text: 'Webアプリ公開計画',
+                    color: 'blue',
+                    collapsed: false,
+                    checkbox: false,
+                    checked: false,
+                    note: 'GitHub Pagesで公開するマインドマップツールの設計書',
+                    x: 0,
+                    y: 0,
+                    children: [
+                        {
+                            id: 'n_1',
+                            text: 'コア機能',
+                            color: 'emerald',
+                            collapsed: false,
+                            checkbox: false,
+                            checked: false,
+                            note: '',
+                            x: 260,
+                            y: -90,
+                            direction: 'right',
+                            children: [
+                                { id: 'n_1_1', text: '自動整列 & 手動ドラッグ配置', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -140, children: [] },
+                                { id: 'n_1_2', text: 'ノード折りたたみ & 色変更', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -90, children: [] },
+                                { id: 'n_1_3', text: '関連付けライン（破線矢印）', color: 'emerald', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: -40, children: [] }
+                            ]
+                        },
+                        {
+                            id: 'n_2',
+                            text: 'データ連携・共有',
+                            color: 'purple',
+                            collapsed: false,
+                            checkbox: false,
+                            checked: false,
+                            note: '',
+                            x: 260,
+                            y: 90,
+                            direction: 'right',
+                            children: [
+                                { id: 'n_2_1', text: 'Markdown / JSON 入出力', color: 'purple', collapsed: false, checkbox: true, checked: true, note: '', x: 520, y: 60, children: [] },
+                                { id: 'n_2_2', text: 'URLハッシュ圧縮共有', color: 'purple', collapsed: false, checkbox: true, checked: false, note: 'URLを送るだけでマップを再現', x: 520, y: 120, children: [] }
+                            ]
+                        },
+                        {
+                            id: 'n_3',
+                            text: 'ストレージ永続化',
+                            color: 'amber',
+                            collapsed: false,
+                            checkbox: false,
+                            checked: false,
+                            note: '',
+                            x: -260,
+                            y: -40,
+                            direction: 'left',
+                            children: [
+                                { id: 'n_3_1', text: 'LocalStorage 即時保存', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -70, children: [] },
+                                { id: 'n_3_2', text: 'IndexedDB 複数マップ管理', color: 'amber', collapsed: false, checkbox: true, checked: true, note: '', x: -520, y: -10, children: [] }
+                            ]
+                        },
+                        {
+                            id: 'n_4',
+                            text: 'GitHub Pages デプロイ',
+                            color: 'rose',
+                            collapsed: false,
+                            checkbox: true,
+                            checked: false,
+                            note: 'index.htmlをリポジトリにPushするだけで完了',
+                            x: -260,
+                            y: 80,
+                            direction: 'left',
+                            children: []
+                        }
+                    ]
+                },
+                associations: [
+                    {
+                        id: 'assoc_1',
+                        fromId: 'n_2_2',
+                        toId: 'n_4',
+                        label: 'サーバーレスで連携'
+                    }
+                ]
+            };
+        }
+
+        // --- アプリケーション状態 ---
+        let mapData = createDefaultMapData();
+        let selectedNodeId = 'n_root';
+        let selectedAssocId = null;
+        let editingNodeId = null;
+
+        // 関連線作成モード
+        let assocCreationSourceId = null;
+
+        // ビューポート (Pan & Zoom)
+        let viewState = {
+            x: window.innerWidth / 2,
+            y: window.innerHeight / 2,
+            scale: 1
+        };
+
+        // 履歴 (Undo / Redo)
+        let historyStack = [];
+        let redoStack = [];
+        const MAX_HISTORY = 40;
+
+        // DOM要素キャッシュ
+        const canvasViewport = document.getElementById('canvasViewport');
+        const canvasTransform = document.getElementById('canvasTransform');
+        const nodesContainer = document.getElementById('nodesContainer');
+        const treeLinksGroup = document.getElementById('treeLinksGroup');
+        const assocLinksGroup = document.getElementById('assocLinksGroup');
+        const mapTitleInput = document.getElementById('mapTitleInput');
+
+        // ============================================================================
+        // 1. IndexedDB & LocalStorage 永続化マネージャー
+        // ============================================================================
+        const DB_NAME = 'MindFlowStudioDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'mindmaps';
+        const LS_CURRENT_KEY = 'mindflow_current_map_v1';
+
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveMapToStorage() {
+            mapData.updatedAt = Date.now();
+            try {
+                // LocalStorageへ即時バックアップ
+                localStorage.setItem(LS_CURRENT_KEY, JSON.stringify(mapData));
+
+                // IndexedDBへ保存
+                const db = await openDatabase();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(JSON.parse(JSON.stringify(mapData)));
+                
+                const statusEl = document.getElementById('saveStatus');
+                statusEl.innerHTML = '<i class="fa-solid fa-check"></i> 保存済';
+            } catch (err) {
+                console.warn('Storage save error:', err);
+            }
+        }
+
+        async function getAllMapsFromIDB() {
+            try {
+                const db = await openDatabase();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const req = tx.objectStore(STORE_NAME).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) {
+                return [];
+            }
+        }
+
+        async function deleteMapFromIDB(id) {
+            const db = await openDatabase();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const req = tx.objectStore(STORE_NAME).delete(id);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // ============================================================================
+        // 2. 履歴管理 (Undo / Redo)
+        // ============================================================================
+        function pushHistory() {
+            historyStack.push(JSON.stringify(mapData));
+            if (historyStack.length > MAX_HISTORY) historyStack.shift();
+            redoStack = [];
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (historyStack.length === 0) return;
+            redoStack.push(JSON.stringify(mapData));
+            mapData = JSON.parse(historyStack.pop());
+            updateUndoRedoButtons();
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            historyStack.push(JSON.stringify(mapData));
+            mapData = JSON.parse(redoStack.pop());
+            updateUndoRedoButtons();
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('undoBtn').disabled = historyStack.length === 0;
+            document.getElementById('redoBtn').disabled = redoStack.length === 0;
+        }
+
+        // ============================================================================
+        // 3. ツリー走査・ノード検索ヘルパー
+        // ============================================================================
+        function findNodeAndParent(nodeId, current = mapData.root, parent = null) {
+            if (current.id === nodeId) return { node: current, parent };
+            for (const child of current.children || []) {
+                const found = findNodeAndParent(nodeId, child, current);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function getAllVisibleNodes(current = mapData.root, list = []) {
+            list.push(current);
+            if (!current.collapsed && current.children) {
+                for (const ch of current.children) {
+                    getAllVisibleNodes(ch, list);
+                }
+            }
+            return list;
+        }
+
+        function countAllDescendants(node) {
+            let count = (node.children || []).length;
+            for (const ch of node.children || []) {
+                count += countAllDescendants(ch);
+            }
+            return count;
+        }
+
+        // 子孫ノードをまとめて平行移動する
+        function translateSubtree(node, dx, dy, includeSelf = false) {
+            if (includeSelf) {
+                node.x += dx;
+                node.y += dy;
+            }
+            for (const ch of node.children || []) {
+                translateSubtree(ch, dx, dy, true);
+            }
+        }
+
+        // ============================================================================
+        // 4. 自動配置（オートレイアウト）エンジン
+        // ============================================================================
+        const LEVEL_GAP_X = 250;
+        const NODE_GAP_Y = 72;
+
+        function computeSubtreeHeight(node) {
+            if (node.collapsed || !node.children || node.children.length === 0) {
+                node._subHeight = NODE_GAP_Y;
+                return NODE_GAP_Y;
+            }
+            let total = 0;
+            for (const ch of node.children) {
+                total += computeSubtreeHeight(ch);
+            }
+            node._subHeight = Math.max(NODE_GAP_Y, total);
+            return node._subHeight;
+        }
+
+        function layoutBranch(node, dirSign, startX, centerY) {
+            node.x = startX;
+            node.y = centerY;
+            node.direction = dirSign > 0 ? 'right' : 'left';
+
+            if (node.collapsed || !node.children || node.children.length === 0) return;
+
+            let currentTop = centerY - node._subHeight / 2;
+            for (const ch of node.children) {
+                const chCenterY = currentTop + ch._subHeight / 2;
+                layoutBranch(ch, dirSign, startX + dirSign * LEVEL_GAP_X, chCenterY);
+                currentTop += ch._subHeight;
+            }
+        }
+
+        function applyAutoLayout() {
+            const root = mapData.root;
+            root.x = 0;
+            root.y = 0;
+
+            if (root.collapsed || !root.children || root.children.length === 0) return;
+
+            const rightChildren = [];
+            const leftChildren = [];
+
+            root.children.forEach((ch, idx) => {
+                computeSubtreeHeight(ch);
+                if (mapData.layoutDir === 'right') {
+                    ch.direction = 'right';
+                    rightChildren.push(ch);
+                } else {
+                    // 左右バランスよく割り振り
+                    if (ch.direction === 'left') {
+                        leftChildren.push(ch);
+                    } else if (ch.direction === 'right') {
+                        rightChildren.push(ch);
+                    } else {
+                        if (idx % 2 === 0) rightChildren.push(ch);
+                        else leftChildren.push(ch);
+                    }
+                }
+            });
+
+            // 右側ツリーの配置
+            const rightTotalH = rightChildren.reduce((acc, c) => acc + c._subHeight, 0);
+            let rTop = -rightTotalH / 2;
+            for (const ch of rightChildren) {
+                const cy = rTop + ch._subHeight / 2;
+                layoutBranch(ch, 1, LEVEL_GAP_X, cy);
+                rTop += ch._subHeight;
+            }
+
+            // 左側ツリーの配置
+            const leftTotalH = leftChildren.reduce((acc, c) => acc + c._subHeight, 0);
+            let lTop = -leftTotalH / 2;
+            for (const ch of leftChildren) {
+                const cy = lTop + ch._subHeight / 2;
+                layoutBranch(ch, -1, -LEVEL_GAP_X, cy);
+                lTop += ch._subHeight;
+            }
+        }
+
+        // ============================================================================
+        // 5. 描画エンジン (HTML Nodes & SVG Bezier Curves)
+        // ============================================================================
+        const nodeDimensions = new Map(); // id -> {w, h}
+
+        function updateViewportTransform() {
+            canvasTransform.style.transform = `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.scale})`;
+            document.getElementById('zoomResetBtn').textContent = `${Math.round(viewState.scale * 100)}%`;
+        }
+
+        function updateHeaderControls() {
+            mapTitleInput.value = mapData.title || '無題のマインドマップ';
+            const autoBtn = document.getElementById('autoLayoutToggleBtn');
+            const layoutText = document.getElementById('layoutModeText');
+            if (mapData.autoLayout) {
+                layoutText.textContent = '自動配置: ON';
+                autoBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm';
+            } else {
+                layoutText.textContent = '手動配置モード';
+                autoBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition text-amber-600 dark:text-amber-400 hover:bg-white dark:hover:bg-slate-800';
+            }
+            document.getElementById('layoutDirSelect').value = mapData.layoutDir || 'both';
+        }
+
+        function renderAll() {
+            if (mapData.autoLayout) {
+                applyAutoLayout();
+            }
+            updateHeaderControls();
+            renderNodes();
+            renderConnections();
+        }
+
+        function renderNodes() {
+            nodesContainer.innerHTML = '';
+            const visibleNodes = getAllVisibleNodes();
+
+            visibleNodes.forEach(node => {
+                const isRoot = node.id === mapData.root.id;
+                const isSelected = node.id === selectedNodeId;
+                const isAssocSource = node.id === assocCreationSourceId;
+                const colorCfg = NODE_COLORS[node.color] || NODE_COLORS.slate;
+
+                const el = document.createElement('div');
+                el.dataset.nodeId = node.id;
+                el.className = `mind-node rounded-2xl border-2 px-4 py-2.5 shadow-md select-none flex flex-col gap-1 ${colorCfg.bg} ${colorCfg.border} ${colorCfg.text} ${isSelected ? 'selected' : ''} ${isAssocSource ? 'assoc-source' : ''} ${isRoot ? 'font-bold text-base px-6 py-3.5 border-[3px]' : 'text-sm font-medium'}`;
+
+                // 中心座標合わせのため一時配置し後でオフセット調整
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+                el.style.transform = 'translate(-50%, -50%)';
+
+                // 上段: チェックボックス + テキスト + メモアイコン
+                const topRow = document.createElement('div');
+                topRow.className = 'flex items-center gap-2';
+
+                if (node.checkbox) {
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = !!node.checked;
+                    cb.className = 'w-4 h-4 rounded text-blue-600 cursor-pointer shrink-0 accent-blue-600';
+                    cb.addEventListener('pointerdown', e => e.stopPropagation());
+                    cb.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        pushHistory();
+                        node.checked = cb.checked;
+                        renderAll();
+                        saveMapToStorage();
+                    });
+                    topRow.appendChild(cb);
+                }
+
+                // テキストまたは編集用Input
+                if (editingNodeId === node.id) {
+                    const input = document.createElement('textarea');
+                    input. rows = 1;
+                    input.value = node.text;
+                    input.className = 'bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white px-2 py-0.5 rounded-lg outline-none ring-2 ring-blue-500 text-sm font-medium min-w-[120px] resize-none';
+                    input.addEventListener('pointerdown', e => e.stopPropagation());
+                    input.addEventListener('keydown', (e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            finishInlineEdit(node, input.value);
+                        } else if (e.key === 'Escape') {
+                            editingNodeId = null;
+                            renderAll();
+                        }
+                    });
+                    input.addEventListener('blur', () => finishInlineEdit(node, input.value));
+                    topRow.appendChild(input);
+                    setTimeout(() => {
+                        input.focus();
+                        input.select();
+                    }, 10);
+                } else {
+                    const span = document.createElement('span');
+                    span.className = `leading-snug break-words ${node.checkbox && node.checked ? 'line-through opacity-50' : ''}`;
+                    span.textContent = node.text || '無題';
+                    topRow.appendChild(span);
+                }
+
+                // メモアイコン
+                if (node.note && node.note.trim() !== '') {
+                    const noteBadge = document.createElement('button');
+                    noteBadge.className = 'text-cyan-600 dark:text-cyan-400 hover:scale-110 transition ml-1 shrink-0';
+                    noteBadge.title = node.note;
+                    noteBadge.innerHTML = '<i class="fa-solid fa-note-sticky text-xs"></i>';
+                    noteBadge.addEventListener('pointerdown', e => e.stopPropagation());
+                    noteBadge.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectedNodeId = node.id;
+                        openNoteModal();
+                    });
+                    topRow.appendChild(noteBadge);
+                }
+
+                el.appendChild(topRow);
+
+                // 折りたたみバッジ (子ノードが存在する場合)
+                if (node.children && node.children.length > 0) {
+                    const collapseBtn = document.createElement('button');
+                    const isLeft = node.direction === 'left' && !isRoot;
+                    const totalHidden = countAllDescendants(node);
+                    collapseBtn.className = `absolute top-1/2 -translate-y-1/2 ${isLeft ? '-left-3.5 -translate-x-full' : '-right-3.5 translate-x-full'} px-1.5 h-5 rounded-full text-[11px] font-bold flex items-center justify-center shadow-sm border transition ${node.collapsed ? 'bg-amber-500 text-white border-amber-600' : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 border-slate-300 dark:border-slate-500 hover:bg-slate-100'}`;
+                    collapseBtn.innerHTML = node.collapsed ? `+${totalHidden}` : '<i class="fa-solid fa-minus text-[9px]"></i>';
+                    collapseBtn.title = node.collapsed ? 'クリックして展開' : 'クリックして折りたたむ';
+                    collapseBtn.addEventListener('pointerdown', e => e.stopPropagation());
+                    collapseBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        pushHistory();
+                        node.collapsed = !node.collapsed;
+                        renderAll();
+                        saveMapToStorage();
+                    });
+                    el.appendChild(collapseBtn);
+                }
+
+                // ノードのドラッグ＆クリックイベント登録
+                setupNodeInteraction(el, node);
+                nodesContainer.appendChild(el);
+            });
+
+            // 寸法計測キャッシュ更新
+            nodesContainer.querySelectorAll('.mind-node').forEach(el => {
+                nodeDimensions.set(el.dataset.nodeId, {
+                    w: el.offsetWidth,
+                    h: el.offsetHeight
+                });
+            });
+        }
+
+        function finishInlineEdit(node, newText) {
+            if (editingNodeId !== node.id) return;
+            editingNodeId = null;
+            const trimmed = newText.trim() || 'ノード';
+            if (trimmed !== node.text) {
+                pushHistory();
+                node.text = trimmed;
+                saveMapToStorage();
+            }
+            renderAll();
+        }
+
+        function renderConnections() {
+            treeLinksGroup.innerHTML = '';
+            assocLinksGroup.innerHTML = '';
+
+            const visibleNodes = getAllVisibleNodes();
+            const visibleMap = new Map(visibleNodes.map(n => [n.id, n]));
+
+            // 1. 通常の親子構造線を描画
+            function drawTreeEdges(parent) {
+                if (parent.collapsed || !parent.children) return;
+                const pDim = nodeDimensions.get(parent.id) || { w: 120, h: 42 };
+
+                for (const child of parent.children) {
+                    const cDim = nodeDimensions.get(child.id) || { w: 120, h: 42 };
+                    const isLeft = child.x < parent.x;
+
+                    const startX = parent.id === mapData.root.id 
+                        ? parent.x + (isLeft ? -pDim.w / 2 : pDim.w / 2)
+                        : parent.x + (isLeft ? -pDim.w / 2 : pDim.w / 2);
+                    const startY = parent.y;
+
+                    const endX = child.x + (isLeft ? cDim.w / 2 : -cDim.w / 2);
+                    const endY = child.y;
+
+                    const ctrlOffset = Math.max(45, Math.abs(endX - startX) * 0.45);
+                    const c1x = startX + (isLeft ? -ctrlOffset : ctrlOffset);
+                    const c2x = endX + (isLeft ? ctrlOffset : -ctrlOffset);
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', `M ${startX} ${startY} C ${c1x} ${startY}, ${c2x} ${endY}, ${endX} ${endY}`);
+                    path.setAttribute('fill', 'none');
+                    const colorCfg = NODE_COLORS[child.color] || NODE_COLORS.slate;
+                    path.setAttribute('stroke', colorCfg.stroke);
+                    path.setAttribute('stroke-width', parent.id === mapData.root.id ? '3' : '2.2');
+                    path.setAttribute('stroke-linecap', 'round');
+
+                    treeLinksGroup.appendChild(path);
+                    drawTreeEdges(child);
+                }
+            }
+            drawTreeEdges(mapData.root);
+
+            // 2. 関連付けの線（破線矢印）を描画
+            (mapData.associations || []).forEach(assoc => {
+                const fromNode = visibleMap.get(assoc.fromId);
+                const toNode = visibleMap.get(assoc.toId);
+                if (!fromNode || !toNode) return;
+
+                const isSelected = assoc.id === selectedAssocId;
+                const dx = toNode.x - fromNode.x;
+                const dy = toNode.y - fromNode.y;
+                const mx = (fromNode.x + toNode.x) / 2;
+                const my = (fromNode.y + toNode.y) / 2;
+
+                // 曲線の膨らみ（法線方向へオフセット）
+                const dist = Math.hypot(dx, dy) || 1;
+                const offset = Math.min(90, dist * 0.25);
+                const cx = mx - (dy / dist) * offset;
+                const cy = my + (dx / dist) * offset;
+
+                const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', `M ${fromNode.x} ${fromNode.y} Q ${cx} ${cy} ${toNode.x} ${toNode.y}`);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', isSelected ? '#f59e0b' : '#9333ea');
+                path.setAttribute('stroke-width', isSelected ? '3.5' : '2.2');
+                path.setAttribute('marker-end', isSelected ? 'url(#arrow-amber)' : 'url(#arrow-purple)');
+                path.setAttribute('class', 'assoc-path');
+
+                path.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedAssocId = assoc.id;
+                    selectedNodeId = null;
+                    renderAll();
+                });
+
+                path.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    selectedAssocId = assoc.id;
+                    openAssocLabelModal(assoc);
+                });
+
+                group.appendChild(path);
+
+                // 二次ベジェ曲線の頂点座標 (t=0.5)
+                const labelX = 0.25 * fromNode.x + 0.5 * cx + 0.25 * toNode.x;
+                const labelY = 0.25 * fromNode.y + 0.5 * cy + 0.25 * toNode.y;
+
+                // ラベル背景＋テキスト
+                const labelText = assoc.label || '関連';
+                const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                foreign.setAttribute('x', labelX - 70);
+                foreign.setAttribute('y', labelY - 14);
+                foreign.setAttribute('width', '140');
+                foreign.setAttribute('height', '28');
+                foreign.style.overflow = 'visible';
+
+                const badge = document.createElement('div');
+                badge.className = `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold shadow-sm cursor-pointer transition ${isSelected ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-700'}`;
+                badge.innerHTML = `<span>${escapeHtml(labelText)}</span>`;
+                badge.title = 'クリックで選択 / ダブルクリックでラベル変更';
+
+                badge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedAssocId = assoc.id;
+                    selectedNodeId = null;
+                    renderAll();
+                });
+                badge.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    selectedAssocId = assoc.id;
+                    openAssocLabelModal(assoc);
+                });
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'w-full h-full flex items-center justify-center';
+                wrapper.appendChild(badge);
+                foreign.appendChild(wrapper);
+                group.appendChild(foreign);
+
+                assocLinksGroup.appendChild(group);
+            });
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+        }
+
+        // ============================================================================
+        // 6. インタラクション（ノードのドラッグ移動・関連線接続・キャンバスパン/ズーム）
+        // ============================================================================
+        function setupNodeInteraction(el, node) {
+            let isDraggingNode = false;
+            let startClientX = 0;
+            let startClientY = 0;
+            let moved = false;
+
+            el.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                e.stopPropagation();
+
+                // 関連線作成モード中の場合
+                if (assocCreationSourceId) {
+                    if (assocCreationSourceId !== node.id) {
+                        pushHistory();
+                        mapData.associations = mapData.associations || [];
+                        mapData.associations.push({
+                            id: 'assoc_' + Date.now(),
+                            fromId: assocCreationSourceId,
+                            toId: node.id,
+                            label: '関連'
+                        });
+                        showToast('関連付けの線を作成しました（ダブルクリックでラベル編集）');
+                        saveMapToStorage();
+                    }
+                    exitAssocCreationMode();
+                    selectedNodeId = node.id;
+                    renderAll();
+                    return;
+                }
+
+                selectedNodeId = node.id;
+                selectedAssocId = null;
+                isDraggingNode = true;
+                moved = false;
+                startClientX = e.clientX;
+                startClientY = e.clientY;
+
+                el.setPointerCapture(e.pointerId);
+                renderNodes(); // 選択枠更新
+                renderConnections();
+            });
+
+            el.addEventListener('pointermove', (e) => {
+                if (!isDraggingNode) return;
+                const dx = (e.clientX - startClientX) / viewState.scale;
+                const dy = (e.clientY - startClientY) / viewState.scale;
+
+                if (!moved && Math.hypot(dx, dy) > 4) {
+                    moved = true;
+                    pushHistory();
+                    if (mapData.autoLayout) {
+                        mapData.autoLayout = false;
+                        showToast('手動配置モードに切り替わりました');
+                        updateHeaderControls();
+                    }
+                }
+
+                if (moved) {
+                    startClientX = e.clientX;
+                    startClientY = e.clientY;
+                    // ルート以外のノード移動時は子孫も一緒に移動すると直感的（Shiftキー押下時は単独移動）
+                    if (node.id !== mapData.root.id && !e.shiftKey) {
+                        translateSubtree(node, dx, dy, true);
+                    } else {
+                        node.x += dx;
+                        node.y += dy;
+                    }
+                    node.direction = node.x < mapData.root.x ? 'left' : 'right';
+                    renderAll();
+                }
+            });
+
+            el.addEventListener('pointerup', (e) => {
+                if (!isDraggingNode) return;
+                isDraggingNode = false;
+                el.releasePointerCapture(e.pointerId);
+                if (moved) {
+                    saveMapToStorage();
+                }
+            });
+
+            el.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                editingNodeId = node.id;
+                renderAll();
+            });
+        }
+
+        // キャンバスのパン & ホイールズーム
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+
+        canvasViewport.addEventListener('pointerdown', (e) => {
+            if (e.target !== canvasViewport && e.target !== canvasTransform && e.target.tagName !== 'svg') return;
+            isPanning = true;
+            panStartX = e.clientX - viewState.x;
+            panStartY = e.clientY - viewState.y;
+            selectedAssocId = null;
+            document.getElementById('colorPalettePanel').classList.add('hidden');
+            renderAll();
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isPanning) return;
+            viewState.x = e.clientX - panStartX;
+            viewState.y = e.clientY - panStartY;
+            updateViewportTransform();
+        });
+
+        window.addEventListener('pointerup', () => {
+            isPanning = false;
+        });
+
+        canvasViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            const newScale = Math.min(2.5, Math.max(0.2, viewState.scale * zoomFactor));
+
+            // マウス位置を中心にズーム
+            const rect = canvasViewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            viewState.x = mouseX - (mouseX - viewState.x) * (newScale / viewState.scale);
+            viewState.y = mouseY - (mouseY - viewState.y) * (newScale / viewState.scale);
+            viewState.scale = newScale;
+            updateViewportTransform();
+        }, { passive: false });
+
+        // ============================================================================
+        // 7. ノード操作コマンド (追加・削除・チェック・色変更・関連線)
+        // ============================================================================
+        function addChildNode() {
+            const targetId = selectedNodeId || mapData.root.id;
+            const found = findNodeAndParent(targetId);
+            if (!found) return;
+
+            pushHistory();
+            const parent = found.node;
+            parent.collapsed = false;
+            parent.children = parent.children || [];
+
+            const isLeft = parent.id === mapData.root.id 
+                ? (parent.children.length % 2 === 1 && mapData.layoutDir === 'both')
+                : (parent.x < mapData.root.x);
+
+            const newNode = {
+                id: 'n_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                text: '新規トピック',
+                color: parent.id === mapData.root.id ? ['blue', 'emerald', 'purple', 'amber', 'rose', 'cyan'][parent.children.length % 6] : parent.color,
+                collapsed: false,
+                checkbox: false,
+                checked: false,
+                note: '',
+                direction: isLeft ? 'left' : 'right',
+                x: parent.x + (isLeft ? -220 : 220),
+                y: parent.y + (parent.children.length * 60),
+                children: []
+            };
+
+            parent.children.push(newNode);
+            selectedNodeId = newNode.id;
+            editingNodeId = newNode.id;
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function addSiblingNode() {
+            const targetId = selectedNodeId || mapData.root.id;
+            if (targetId === mapData.root.id) {
+                addChildNode();
+                return;
+            }
+            const found = findNodeAndParent(targetId);
+            if (!found || !found.parent) return;
+
+            pushHistory();
+            const parent = found.parent;
+            const curNode = found.node;
+            const idx = parent.children.findIndex(c => c.id === curNode.id);
+
+            const newNode = {
+                id: 'n_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                text: '新規トピック',
+                color: curNode.color,
+                collapsed: false,
+                checkbox: curNode.checkbox,
+                checked: false,
+                note: '',
+                direction: curNode.direction,
+                x: curNode.x,
+                y: curNode.y + 70,
+                children: []
+            };
+
+            parent.children.splice(idx + 1, 0, newNode);
+            selectedNodeId = newNode.id;
+            editingNodeId = newNode.id;
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function deleteSelected() {
+            if (selectedAssocId) {
+                pushHistory();
+                mapData.associations = (mapData.associations || []).filter(a => a.id !== selectedAssocId);
+                selectedAssocId = null;
+                renderAll();
+                saveMapToStorage();
+                showToast('関連線を削除しました');
+                return;
+            }
+
+            if (!selectedNodeId || selectedNodeId === mapData.root.id) {
+                showToast('ルートノードは削除できません', 'warn');
+                return;
+            }
+
+            const found = findNodeAndParent(selectedNodeId);
+            if (!found || !found.parent) return;
+
+            pushHistory();
+            const parent = found.parent;
+            parent.children = parent.children.filter(c => c.id !== selectedNodeId);
+
+            // 削除されたノードに関わる関連線もクリーンアップ
+            const visibleIds = new Set(getAllVisibleNodes().map(n => n.id));
+            mapData.associations = (mapData.associations || []).filter(a => visibleIds.has(a.fromId) && visibleIds.has(a.toId));
+
+            selectedNodeId = parent.id;
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function toggleCheckboxOnSelected() {
+            if (!selectedNodeId) return;
+            const found = findNodeAndParent(selectedNodeId);
+            if (!found) return;
+            pushHistory();
+            found.node.checkbox = !found.node.checkbox;
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function toggleCollapseOnSelected() {
+            if (!selectedNodeId) return;
+            const found = findNodeAndParent(selectedNodeId);
+            if (!found || !found.node.children || found.node.children.length === 0) return;
+            pushHistory();
+            found.node.collapsed = !found.node.collapsed;
+            renderAll();
+            saveMapToStorage();
+        }
+
+        function startAssocCreationMode() {
+            if (!selectedNodeId) {
+                showToast('最初に関連元のノードを選択してください', 'warn');
+                return;
+            }
+            assocCreationSourceId = selectedNodeId;
+            document.getElementById('assocModeBanner').classList.remove('hidden');
+            renderAll();
+        }
+
+        function exitAssocCreationMode() {
+            assocCreationSourceId = null;
+            document.getElementById('assocModeBanner').classList.add('hidden');
+            renderAll();
+        }
+
+        // ============================================================================
+        // 8. Markdown & JSON コンバータ (インポート / エクスポート)
+        // ============================================================================
+        function exportToMarkdown() {
+            const lines = [];
+            function walk(node, depth) {
+                const checkPrefix = node.checkbox ? (node.checked ? '[x] ' : '[ ] ') : '';
+                if (depth === 0) {
+                    lines.push(`# ${checkPrefix}${node.text}`);
+                } else if (depth === 1) {
+                    lines.push(`\n## ${checkPrefix}${node.text}`);
+                } else {
+                    const indent = '  '.repeat(depth - 2);
+                    lines.push(`${indent}- ${checkPrefix}${node.text}`);
+                }
+                if (node.note && node.note.trim()) {
+                    const noteIndent = depth >= 2 ? '  '.repeat(depth - 1) : '';
+                    lines.push(`${noteIndent}> ${node.note.replace(/\n/g, ' ')}`);
+                }
+                for (const ch of node.children || []) {
+                    walk(ch, depth + 1);
+                }
+            }
+            walk(mapData.root, 0);
+            return lines.join('\n');
+        }
+
+        function importFromMarkdown(mdText) {
+            const rawLines = mdText.split(/\r?\n/);
+            let rootNode = null;
+            const stack = []; // [{ node, level }]
+            const colors = ['blue', 'emerald', 'purple', 'amber', 'rose', 'cyan'];
+            let colorIdx = 0;
+
+            for (let raw of rawLines) {
+                if (!raw.trim()) continue;
+
+                // 引用行 `> メモ` の場合は直前のノードのnoteに追加
+                const quoteMatch = raw.match(/^\s*>\s*(.+)$/);
+                if (quoteMatch && stack.length > 0) {
+                    const lastNode = stack[stack.length - 1].node;
+                    lastNode.note = lastNode.note ? `${lastNode.note}\n${quoteMatch[1]}` : quoteMatch[1];
+                    continue;
+                }
+
+                let level = 1;
+                let content = raw.trim();
+
+                const headingMatch = raw.match(/^(#{1,6})\s+(.*)$/);
+                const listMatch = raw.match(/^(\s*)[-*+]\s+(.*)$/);
+
+                if (headingMatch) {
+                    level = headingMatch[1].length - 1; // # -> 0, ## -> 1
+                    content = headingMatch[2].trim();
+                } else if (listMatch) {
+                    const indentSpaces = listMatch[1].replace(/\t/g, '  ').length;
+                    level = 2 + Math.floor(indentSpaces / 2);
+                    content = listMatch[2].trim();
+                } else {
+                    level = 1;
+                }
+
+                // チェックボックス判定 `[ ]` or `[x]`
+                let checkbox = false;
+                let checked = false;
+                const cbMatch = content.match(/^\[([ xX])\]\s+(.*)$/);
+                if (cbMatch) {
+                    checkbox = true;
+                    checked = cbMatch[1].toLowerCase() === 'x';
+                    content = cbMatch[2].trim();
+                }
+
+                const newNode = {
+                    id: 'n_' + Date.now() + '_' + Math.floor(Math.random() * 100000),
+                    text: content || 'トピック',
+                    color: level === 0 ? 'blue' : (level === 1 ? colors[colorIdx++ % colors.length] : 'slate'),
+                    collapsed: false,
+                    checkbox,
+                    checked,
+                    note: '',
+                    x: 0,
+                    y: 0,
+                    children: []
+                };
+
+                if (!rootNode || level === 0) {
+                    if (!rootNode) {
+                        newNode.id = 'n_root';
+                        rootNode = newNode;
+                        stack.length = 0;
+                        stack.push({ node: rootNode, level: 0 });
+                        continue;
+                    }
+                }
+
+                while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+                    stack.pop();
+                }
+
+                const parent = stack[stack.length - 1].node;
+                if (parent.id !== 'n_root') {
+                    newNode.color = parent.color;
+                }
+                parent.children.push(newNode);
+                stack.push({ node: newNode, level });
+            }
+
+            if (!rootNode) {
+                throw new Error('有効なMarkdownが見つかりませんでした');
+            }
+
+            pushHistory();
+            mapData.title = rootNode.text;
+            mapData.root = rootNode;
+            mapData.associations = [];
+            mapData.autoLayout = true;
+            selectedNodeId = rootNode.id;
+            renderAll();
+            centerCanvasView();
+            saveMapToStorage();
+        }
+
+        // ============================================================================
+        // 9. URL連携・共有機能 (LZ-String 圧縮 URL ハッシュ)
+        // ============================================================================
+        function generateShareUrl(mode = 'md') {
+            const baseUrl = window.location.origin + window.location.pathname;
+            if (mode === 'md') {
+                const md = exportToMarkdown();
+                const compressed = LZString.compressToEncodedURIComponent(md);
+                return `${baseUrl}#md=${compressed}`;
+            } else {
+                const jsonStr = JSON.stringify(mapData);
+                const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+                return `${baseUrl}#json=${compressed}`;
+            }
+        }
+
+        function checkAndLoadFromUrlHash() {
+            const hash = window.location.hash;
+            if (!hash || hash.length < 5) return false;
+
+            try {
+                if (hash.startsWith('#md=')) {
+                    const encoded = hash.slice(4);
+                    const md = LZString.decompressFromEncodedURIComponent(encoded);
+                    if (md) {
+                        importFromMarkdown(md);
+                        showToast('共有URLからMarkdownマップを読み込みました');
+                        history.replaceState(null, '', window.location.pathname);
+                        return true;
+                    }
+                } else if (hash.startsWith('#json=')) {
+                    const encoded = hash.slice(6);
+                    const jsonStr = LZString.decompressFromEncodedURIComponent(encoded);
+                    if (jsonStr) {
+                        const parsed = JSON.parse(jsonStr);
+                        if (parsed && parsed.root) {
+                            mapData = parsed;
+                            selectedNodeId = mapData.root.id;
+                            renderAll();
+                            centerCanvasView();
+                            saveMapToStorage();
+                            showToast('共有URLからマインドマップを復元しました');
+                            history.replaceState(null, '', window.location.pathname);
+                            return true;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to parse shared URL:', err);
+                showToast('共有URLの読み込みに失敗しました', 'warn');
+            }
+            return false;
+        }
+
+        // ============================================================================
+        // 10. UIイベント・モーダル制御・ショートカット登録
+        // ============================================================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'warn' ? 'bg-amber-600' : 'bg-slate-800 dark:bg-slate-700';
+            toast.className = `${bgClass} text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-medium flex items-center gap-2 transition-all duration-300`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-check text-emerald-400'}"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        function copyTextToClipboard(text, successMsg = 'クリップボードにコピーしました') {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            temp.remove();
+            showToast(successMsg);
+        }
+
+        function centerCanvasView() {
+            viewState.x = window.innerWidth / 2;
+            viewState.y = window.innerHeight / 2;
+            viewState.scale = 1;
+            updateViewportTransform();
+        }
+
+        // ノードメモ / 関連線ラベルモーダル
+        let noteModalMode = 'node'; // 'node' or 'assoc'
+        let editingAssocObj = null;
+
+        function openNoteModal() {
+            if (!selectedNodeId) return;
+            const found = findNodeAndParent(selectedNodeId);
+            if (!found) return;
+            noteModalMode = 'node';
+            document.getElementById('noteModalTitle').innerHTML = '<i class="fa-regular fa-note-sticky text-cyan-500"></i><span>ノードの詳細メモ</span>';
+            document.getElementById('noteModalTextarea').value = found.node.note || '';
+            document.getElementById('noteModal').classList.remove('hidden');
+            document.getElementById('noteModal').classList.add('flex');
+            document.getElementById('noteModalTextarea').focus();
+        }
+
+        function openAssocLabelModal(assoc) {
+            noteModalMode = 'assoc';
+            editingAssocObj = assoc;
+            document.getElementById('noteModalTitle').innerHTML = '<i class="fa-solid fa-bezier-curve text-purple-500"></i><span>関連線のラベル編集</span>';
+            document.getElementById('noteModalTextarea').value = assoc.label || '';
+            document.getElementById('noteModal').classList.remove('hidden');
+            document.getElementById('noteModal').classList.add('flex');
+            document.getElementById('noteModalTextarea').focus();
+        }
+
+        document.getElementById('saveNoteBtn').addEventListener('click', () => {
+            const val = document.getElementById('noteModalTextarea').value.trim();
+            pushHistory();
+            if (noteModalMode === 'node' && selectedNodeId) {
+                const found = findNodeAndParent(selectedNodeId);
+                if (found) found.node.note = val;
+            } else if (noteModalMode === 'assoc' && editingAssocObj) {
+                editingAssocObj.label = val || '関連';
+            }
+            closeAllModals();
+            renderAll();
+            saveMapToStorage();
+        });
+
+        function closeAllModals() {
+            ['ioModal', 'shareModal', 'storageModal', 'noteModal', 'helpModal'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            });
+        }
+
+        document.querySelectorAll('.close-modal-btn').forEach(btn => {
+            btn.addEventListener('click', closeAllModals);
+        });
+
+        // 各種ボタンのイベントバインド
+        document.getElementById('addChildBtn').addEventListener('click', addChildNode);
+        document.getElementById('addSiblingBtn').addEventListener('click', addSiblingNode);
+        document.getElementById('deleteNodeBtn').addEventListener('click', deleteSelected);
+        document.getElementById('toggleCheckboxBtn').addEventListener('click', toggleCheckboxOnSelected);
+        document.getElementById('toggleCollapseBtn').addEventListener('click', toggleCollapseOnSelected);
+        document.getElementById('editNoteBtn').addEventListener('click', openNoteModal);
+        document.getElementById('startAssocBtn').addEventListener('click', startAssocCreationMode);
+        document.getElementById('cancelAssocBtn').addEventListener('click', exitAssocCreationMode);
+
+        // カラーパレット切替
+        document.getElementById('toggleColorBtn').addEventListener('click', () => {
+            document.getElementById('colorPalettePanel').classList.toggle('hidden');
+        });
+
+        document.querySelectorAll('.color-swatch').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (!selectedNodeId) return;
+                const found = findNodeAndParent(selectedNodeId);
+                if (!found) return;
+                pushHistory();
+                found.node.color = btn.dataset.color;
+                renderAll();
+                saveMapToStorage();
+            });
+        });
+
+        // 自動配置切替・再整列
+        document.getElementById('autoLayoutToggleBtn').addEventListener('click', () => {
+            pushHistory();
+            mapData.autoLayout = !mapData.autoLayout;
+            renderAll();
+            saveMapToStorage();
+        });
+
+        document.getElementById('reLayoutBtn').addEventListener('click', () => {
+            pushHistory();
+            mapData.autoLayout = true;
+            renderAll();
+            centerCanvasView();
+            saveMapToStorage();
+            showToast('マインドマップを自動整列しました');
+        });
+
+        document.getElementById('layoutDirSelect').addEventListener('change', (e) => {
+            pushHistory();
+            mapData.layoutDir = e.target.value;
+            mapData.autoLayout = true;
+            renderAll();
+            saveMapToStorage();
+        });
+
+        // タイトル編集
+        mapTitleInput.addEventListener('change', () => {
+            const val = mapTitleInput.value.trim() || '無題のマップ';
+            mapData.title = val;
+            mapData.root.text = val;
+            renderAll();
+            saveMapToStorage();
+        });
+
+        // Undo / Redo
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('redoBtn').addEventListener('click', redo);
+
+        // ズームボタン
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            viewState.scale = Math.min(2.5, viewState.scale * 1.15);
+            updateViewportTransform();
+        });
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            viewState.scale = Math.max(0.2, viewState.scale / 1.15);
+            updateViewportTransform();
+        });
+        document.getElementById('zoomResetBtn').addEventListener('click', () => {
+            viewState.scale = 1;
+            updateViewportTransform();
+        });
+        document.getElementById('centerViewBtn').addEventListener('click', centerCanvasView);
+
+        // ダークモード切替
+        document.getElementById('themeToggleBtn').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // ヘルプモーダル
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            const m = document.getElementById('helpModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        });
+
+        // --- 入出力モーダル (Markdown / JSON) ---
+        let currentIoMode = 'md'; // 'md' or 'json'
+        const ioTextarea = document.getElementById('ioTextarea');
+        const tabMarkdownBtn = document.getElementById('tabMarkdownBtn');
+        const tabJsonBtn = document.getElementById('tabJsonBtn');
+
+        function refreshIoModalContent() {
+            if (currentIoMode === 'md') {
+                ioTextarea.value = exportToMarkdown();
+                tabMarkdownBtn.className = 'px-4 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition';
+                tabJsonBtn.className = 'px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition';
+            } else {
+                ioTextarea.value = JSON.stringify(mapData, null, 2);
+                tabJsonBtn.className = 'px-4 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm transition';
+                tabMarkdownBtn.className = 'px-4 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition';
+            }
+        }
+
+        document.getElementById('openIoModalBtn').addEventListener('click', () => {
+            refreshIoModalContent();
+            const m = document.getElementById('ioModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        });
+
+        tabMarkdownBtn.addEventListener('click', () => {
+            currentIoMode = 'md';
+            refreshIoModalContent();
+        });
+
+        tabJsonBtn.addEventListener('click', () => {
+            currentIoMode = 'json';
+            refreshIoModalContent();
+        });
+
+        document.getElementById('copyIoTextBtn').addEventListener('click', () => {
+            copyTextToClipboard(ioTextarea.value, `${currentIoMode.toUpperCase()}をコピーしました`);
+        });
+
+        document.getElementById('downloadFileBtn').addEventListener('click', () => {
+            const ext = currentIoMode === 'md' ? 'md' : 'json';
+            const mime = currentIoMode === 'md' ? 'text/markdown;charset=utf-8' : 'application/json;charset=utf-8';
+            const blob = new Blob([ioTextarea.value], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${mapData.title || 'mindmap'}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`.${ext} ファイルをダウンロードしました`);
+        });
+
+        document.getElementById('fileUploadInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                ioTextarea.value = reader.result;
+                if (file.name.endsWith('.json')) {
+                    currentIoMode = 'json';
+                    tabJsonBtn.click();
+                    ioTextarea.value = reader.result;
+                } else {
+                    currentIoMode = 'md';
+                    tabMarkdownBtn.click();
+                    ioTextarea.value = reader.result;
+                }
+                showToast('ファイルを読み込みました。「マップに反映」を押してください');
+            };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('applyImportBtn').addEventListener('click', () => {
+            const raw = ioTextarea.value.trim();
+            if (!raw) return;
+            try {
+                if (currentIoMode === 'md') {
+                    importFromMarkdown(raw);
+                } else {
+                    const parsed = JSON.parse(raw);
+                    if (!parsed.root) throw new Error('Invalid JSON structure');
+                    pushHistory();
+                    mapData = parsed;
+                    selectedNodeId = mapData.root.id;
+                    renderAll();
+                    centerCanvasView();
+                    saveMapToStorage();
+                }
+                closeAllModals();
+                showToast('データをマインドマップへ反映しました');
+            } catch (err) {
+                showToast('形式エラー: 正しいMarkdownまたはJSONを入力してください', 'warn');
+            }
+        });
+
+        // --- URL共有モーダル ---
+        function updateShareModalUrl() {
+            const mode = document.querySelector('input[name="shareMode"]:checked').value;
+            const url = generateShareUrl(mode);
+            document.getElementById('shareUrlOutput').value = url;
+            document.getElementById('shareUrlLengthInfo').textContent = `文字数: ${url.length} 文字`;
+        }
+
+        document.getElementById('shareUrlBtn').addEventListener('click', () => {
+            updateShareModalUrl();
+            const m = document.getElementById('shareModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        });
+
+        document.querySelectorAll('input[name="shareMode"]').forEach(r => {
+            r.addEventListener('change', updateShareModalUrl);
+        });
+
+        document.getElementById('copyShareUrlBtn').addEventListener('click', () => {
+            const url = document.getElementById('shareUrlOutput').value;
+            copyTextToClipboard(url, '共有用URLをコピーしました！');
+        });
+
+        // --- IndexedDB マップ一覧管理モーダル ---
+        async function renderSavedMapsList() {
+            const listEl = document.getElementById('savedMapsList');
+            const maps = await getAllMapsFromIDB();
+            maps.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+            if (maps.length === 0) {
+                listEl.innerHTML = '<div class="text-xs text-slate-400 py-4 text-center">保存されたマップはありません</div>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            maps.forEach(item => {
+                const isCurrent = item.id === mapData.id;
+                const row = document.createElement('div');
+                row.className = `p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition ${isCurrent ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/40'}`;
+
+                const dateStr = new Date(item.updatedAt || Date.now()).toLocaleString('ja-JP');
+                row.innerHTML = `
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs truncate">${escapeHtml(item.title || '無題')}</span>
+                            ${isCurrent ? '<span class="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full">現在編集中</span>' : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5">最終更新: ${dateStr}</div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button class="load-map-btn px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white dark:bg-slate-700 text-xs font-semibold transition">開く</button>
+                        <button class="del-map-btn w-8 h-8 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-950 text-rose-500 flex items-center justify-center text-xs transition" title="削除">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+
+                row.querySelector('.load-map-btn').addEventListener('click', () => {
+                    mapData = item;
+                    selectedNodeId = mapData.root.id;
+                    historyStack = [];
+                    redoStack = [];
+                    updateUndoRedoButtons();
+                    renderAll();
+                    centerCanvasView();
+                    saveMapToStorage();
+                    closeAllModals();
+                    showToast(`「${mapData.title}」を読み込みました`);
+                });
+
+                row.querySelector('.del-map-btn').addEventListener('click', async () => {
+                    await deleteMapFromIDB(item.id);
+                    renderSavedMapsList();
+                    showToast('マップを削除しました');
+                });
+
+                listEl.appendChild(row);
+            });
+        }
+
+        document.getElementById('openMapListBtn').addEventListener('click', () => {
+            renderSavedMapsList();
+            const m = document.getElementById('storageModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        });
+
+        document.getElementById('createNewMapBtn').addEventListener('click', () => {
+            mapData = {
+                id: 'map_' + Date.now(),
+                title: '新規マインドマップ',
+                updatedAt: Date.now(),
+                autoLayout: true,
+                layoutDir: 'both',
+                root: {
+                    id: 'n_root',
+                    text: '中心トピック',
+                    color: 'blue',
+                    collapsed: false,
+                    checkbox: false,
+                    checked: false,
+                    note: '',
+                    x: 0,
+                    y: 0,
+                    children: []
+                },
+                associations: []
+            };
+            selectedNodeId = 'n_root';
+            historyStack = [];
+            redoStack = [];
+            updateUndoRedoButtons();
+            renderAll();
+            centerCanvasView();
+            saveMapToStorage();
+            closeAllModals();
+            showToast('新しいマインドマップを作成しました');
+        });
+
+        // --- キーボードショートカット ---
+        window.addEventListener('keydown', (e) => {
+            // 入力フォームやモーダル表示中はスキップ
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+            if (editingNodeId) return;
+
+            if (e.key === 'Escape') {
+                exitAssocCreationMode();
+                closeAllModals();
+                return;
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) redo();
+                else undo();
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+                return;
+            }
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                addChildNode();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                addSiblingNode();
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                e.preventDefault();
+                deleteSelected();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                toggleCollapseOnSelected();
+            } else if (e.key === 'F2') {
+                e.preventDefault();
+                if (selectedNodeId) {
+                    editingNodeId = selectedNodeId;
+                    renderAll();
+                }
+            }
+        });
+
+        // ============================================================================
+        // 11. アプリケーション初期化
+        // ============================================================================
+        window.onload = async function () {
+            updateViewportTransform();
+
+            // 1. URLハッシュ共有パラメータがあれば最優先で復元
+            const loadedFromUrl = checkAndLoadFromUrlHash();
+
+            // 2. なければLocalStorageから前回作業データを復元
+            if (!loadedFromUrl) {
+                try {
+                    const saved = localStorage.getItem(LS_CURRENT_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && parsed.root) {
+                            mapData = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to load from LocalStorage:', e);
+                }
+            }
+
+            updateUndoRedoButtons();
+            renderAll();
+            await saveMapToStorage();
+        };
+    </script>
+</body>
+</html>
