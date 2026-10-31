@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0f172a" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- アプリ背景角丸スクワークル -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- マインドマップ接続曲線 -->
+  <g fill="none" stroke="#93c5fd" stroke-width="14" stroke-linecap="round" opacity="0.9">
+    <!-- 中央から右上へ -->
+    <path d="M 256 256 C 310 256, 330 160, 390 160" />
+    <!-- 中央から右下へ -->
+    <path d="M 256 256 C 310 256, 330 352, 380 352" />
+    <!-- 中央から左上へ -->
+    <path d="M 256 256 C 200 256, 180 180, 130 180" />
+    <!-- 中央から左下へ -->
+    <path d="M 256 256 C 200 256, 180 330, 140 330" />
+  </g>
+
+  <!-- サブノード -->
+  <g filter="url(#shadow)">
+    <!-- 右上ノード -->
+    <circle cx="390" cy="160" r="34" fill="#34d399" stroke="#ffffff" stroke-width="8" />
+    <!-- 右下ノード -->
+    <circle cx="380" cy="352" r="30" fill="#c084fc" stroke="#ffffff" stroke-width="8" />
+    <!-- 左上ノード -->
+    <circle cx="130" cy="180" r="28" fill="#fbbf24" stroke="#ffffff" stroke-width="8" />
+    <!-- 左下ノード -->
+    <circle cx="140" cy="330" r="26" fill="#f43f5e" stroke="#ffffff" stroke-width="8" />
+
+    <!-- センターノード（メイン） -->
+    <circle cx="256" cy="256" r="64" fill="url(#nodeGrad)" stroke="#60a5fa" stroke-width="12" />
+    <!-- センターアイコン（マインドマップマーク） -->
+    <circle cx="256" cy="256" r="24" fill="#2563eb" />
+  </g>
+</svg>
